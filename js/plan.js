@@ -205,6 +205,63 @@ const Plan = (() => {
   }
   function cwSellOut(inStore, months) { return addDays(inStore, Math.round(months * 30.44)); }
 
+  /* ---------- WIP linesheet pull ----------
+   * Match a typed colorway name against WIP colors: exact first, then
+   * containment both ways preferring the longest WIP color name.
+   * A pulled linesheet is stored under "<allocKey>_wip" as
+   * [{style,type,units,received,on_order,pos}] and its rows render exactly
+   * like draft rows (editable, removable, typed values persist). */
+  function normColor(s) { return String(s == null ? "" : s).toLowerCase().replace(/\s+/g, " ").trim(); }
+
+  function matchWipColor(name) {
+    const rows = (DATA.wip && DATA.wip.rows) || [];
+    const n = normColor(name);
+    if (!n || !rows.length) return null;
+    const seen = {};
+    rows.forEach(r => { const c = normColor(r.color); if (c && !(c in seen)) seen[c] = String(r.color).trim(); });
+    if (seen[n]) return { norm: n, display: seen[n] };
+    const cands = Object.keys(seen).filter(c => c.indexOf(n) !== -1 || n.indexOf(c) !== -1);
+    if (!cands.length) return null;
+    cands.sort((a, b) => b.length - a.length);
+    return { norm: cands[0], display: seen[cands[0]] };
+  }
+
+  function wipRowsFor(colorNorm) {
+    return ((DATA.wip && DATA.wip.rows) || []).filter(r => normColor(r.color) === colorNorm);
+  }
+
+  function wipLinesheet(colorNorm) {
+    const byStyle = {};
+    wipRowsFor(colorNorm).forEach(r => {
+      const sk = normColor(r.style);
+      if (!sk) return;
+      if (!byStyle[sk]) byStyle[sk] = { style: String(r.style).trim(), received: 0, on_order: 0, pos: {} };
+      byStyle[sk].received += (+r.received || 0);
+      byStyle[sk].on_order += (+r.on_order || 0);
+      if (r.po) byStyle[sk].pos[String(r.po)] = r.order_date || "";
+    });
+    return Object.values(byStyle)
+      .map(s => Object.assign(s, {
+        units: s.received + s.on_order,
+        type: styleTypeGuess(s.style),
+        affinity: affinityFor(s.style).slice(0, 3)
+      }))
+      .filter(s => s.units > 0)
+      .sort((a, b) => b.units - a.units);
+  }
+
+  function wipSummary(colorNorm) {
+    const rows = wipRowsFor(colorNorm);
+    let received = 0, on_order = 0;
+    const pos = {};
+    rows.forEach(r => {
+      received += (+r.received || 0);
+      on_order += (+r.on_order || 0);
+      if (r.po) pos[String(r.po)] = r.order_date || "";
+    });
+    return { styles: wipLinesheet(colorNorm).length, received, on_order, pos };
+  }
+
   /* ---------- tiers sub-tab ---------- */
   function renderTiers(root, tm) {
     tierBar(root, tm);
@@ -215,6 +272,7 @@ const Plan = (() => {
     allocatorCard(cols, tm);
     root.appendChild(cols);
     dropCardsSection(root, tm);
+    styleCoverageCard(root, tm);
     trackerCard(root);
     assumptionsCard(root);
   }
@@ -360,8 +418,39 @@ const Plan = (() => {
   }
   function setAllocForm(f) { Store.set("alloc_form", f); }
 
+  /* Real style→type lookup from inventory cls (Tops/Bottoms/Maillots/Tankinis).
+   * Style names carry size-range suffixes ("juliette a/b/c", "beach party c/d/dd")
+   * which are stripped before lookup; majority vote wins on conflicting cls.
+   * Keyword guessing is only a fallback for styles absent from inventory. */
+  let _styleClass = null;
+  function styleClassMap() {
+    if (_styleClass) return _styleClass;
+    _styleClass = {};
+    const votes = {};
+    const suf = /\s+[a-z]+(\/[a-z]+)+$/i;
+    ((DATA.inventory) || []).forEach(r => {
+      const cls = String(r.cls || "").toLowerCase();
+      const t = cls === "tops" ? "tops"
+        : cls === "bottoms" ? "bottoms"
+        : (cls === "maillots" || cls === "tankinis") ? "maillots"
+        : null; // Childrens / SwimCaps / Mens / unknown: no mapping
+      if (!t) return;
+      const key = String(r.s || "").toLowerCase().replace(suf, "").trim();
+      if (!key) return;
+      votes[key] = votes[key] || {};
+      votes[key][t] = (votes[key][t] || 0) + 1;
+    });
+    Object.keys(votes).forEach(k => {
+      _styleClass[k] = Object.entries(votes[k]).sort((a, b) => b[1] - a[1])[0][0];
+    });
+    return _styleClass;
+  }
+
   function styleTypeGuess(style) {
-    const s = style.toLowerCase();
+    const key = String(style || "").toLowerCase().replace(/\s+[a-z]+(\/[a-z]+)+$/i, "").trim();
+    const hit = key && styleClassMap()[key];
+    if (hit) return hit;
+    const s = String(style || "").toLowerCase();
     if (["cinch", "bambi", "brief", "bottom", "cheeky", "thong", "bikini bottom"].some(w => s.includes(w))) return "bottoms";
     if (["maillot", "one piece", "one-piece", "suit"].some(w => s.includes(w))) return "maillots";
     return "tops";
@@ -574,14 +663,27 @@ const Plan = (() => {
     }
     const buyUnits = holeTarget;
 
-    const draft = buildDraft(buyUnits, tp, bp, mp);
-    const removed = new Set(Store.get(key + "_removed", []));
-    const extras = Store.get(key + "_extra", []);
+    // WIP linesheet pull: a pulled linesheet replaces the affinity draft rows
+    const wipMatch = matchWipColor(rawName);
+    const wipPulled = Store.get(key + "_wip", null);
+    const useWip = !!(wipMatch && Array.isArray(wipPulled) && wipPulled.length);
     const rows = [];
-    draft.forEach((d, i) => {
-      if (removed.has(i)) return;
-      rows.push({ style: d.style, type: d.type, units: d.units, affinity: d.affinity, oid: key + "_s" + i, extra: false });
-    });
+    if (useWip) {
+      wipPulled.forEach((w, i) => rows.push({
+        style: w.style, type: w.type || "tops", units: w.units,
+        affinity: affinityFor(w.style).slice(0, 3),
+        oid: key + "_w" + i, wip: true, wi: i,
+        received: w.received || 0, on_order: w.on_order || 0, pos: w.pos || {}
+      }));
+    } else {
+      const draft = buildDraft(buyUnits, tp, bp, mp);
+      const removed = new Set(Store.get(key + "_removed", []));
+      draft.forEach((d, i) => {
+        if (removed.has(i)) return;
+        rows.push({ style: d.style, type: d.type, units: d.units, affinity: d.affinity, oid: key + "_s" + i, extra: false });
+      });
+    }
+    const extras = Store.get(key + "_extra", []);
     extras.forEach((x, xi) => rows.push({ style: x.style, type: x.type || "tops", units: x.units, affinity: affinityFor(x.style).slice(0, 3), oid: key + "_x" + xi, extra: true, xi }));
 
     const targets = { tops: Math.round(buyUnits * tp), bottoms: Math.round(buyUnits * bp), maillots: Math.round(buyUnits * mp) };
@@ -598,7 +700,24 @@ const Plan = (() => {
       ${recutHoles.urgent.length ? `<p class="small" style="margin-top:10px"><b>Also urgent elsewhere:</b> ${recutHoles.urgent.slice(0, 5).map(esc).join("; ")}</p>` : ""}
       </div></details>`;
     }
+    // WIP linesheet pull banner (coexists with recut flag — both are shown when both apply)
+    if (wipMatch) {
+      const ws = wipSummary(wipMatch.norm);
+      const poKeys = Object.keys(ws.pos);
+      if (useWip) {
+        html += `<div class="wipflag pulled"><div class="wipflag-text"><b>WIP linesheet</b> — pulled ${wipPulled.length} styles from WIP color "${esc(wipMatch.display)}". Edit units freely; typed values stick.</div><button class="linkbtn" id="wip-clear">clear, use affinity draft</button></div>`;
+      } else if (ws.styles > 0) {
+        const poList = poKeys.slice(0, 5).map(po =>
+          `${esc(po)}${ws.pos[po] ? " · " + fmtDate(ws.pos[po]) : ""}`).join("; ");
+        const more = poKeys.length > 5 ? ` <span class="faint">+${poKeys.length - 5} more</span>` : "";
+        html += `<div class="wipflag"><div class="wipflag-text"><b>Found in WIP</b> — matched color "${esc(wipMatch.display)}": <b>${ws.styles} styles</b> · ${fmt(ws.received)} received + ${fmt(ws.on_order)} on order · across ${poKeys.length} PO${poKeys.length === 1 ? "" : "s"} (${poList}${more})</div><button class="btn sm" id="wip-pull">Pull linesheet from WIP</button></div>`;
+      } else {
+        html += `<div class="wipflag"><div class="wipflag-text">Matched WIP color "${esc(wipMatch.display)}" — no received/on-order quantities to pull.</div></div>`;
+      }
+    }
     // affinity headline: strongest pairs inside this draft, front and center
+    // (skipped when showing a pulled WIP linesheet)
+    if (!useWip) {
     const pairSeen = new Set(), pairList = [];
     rows.forEach(r => (r.affinity || []).forEach(a => {
       const k = [r.style, a.other].sort().join("");
@@ -610,6 +729,7 @@ const Plan = (() => {
       html += `<div class="aff-lede">Affinity-seeded draft — strongest pairs in this colorway: ` +
         topPairs.map(p => `<b>${esc(p.a)} + ${esc(p.b)}</b> (${p.n} baskets)`).join(" · ") + `</div>`;
     }
+    } // end if (!useWip)
     ["tops", "bottoms", "maillots"].forEach(type => {
       const trs = rows.filter(r => r.type === type);
       if (!trs.length && targets[type] <= 0) return;
@@ -617,7 +737,7 @@ const Plan = (() => {
       html += `<div class="alloc-sec">${type} · ${fmt(alloc)} allocated / ${fmt(targets[type])} ratio target</div>
       <table><tr><th>Style</th><th>Type</th><th class="num">Units</th><th>Affinity signal</th><th></th></tr>
       ${trs.map(r => `<tr>
-        <td>${esc(r.style)}</td><td class="muted small">${esc(r.type)}</td>
+        <td>${esc(r.style)}${r.wip ? `<div class="small faint">${fmt(r.received)} received + ${fmt(r.on_order)} on order · PO ${esc(Object.keys(r.pos || {}).join(", "))}</div>` : ""}</td><td class="muted small">${esc(r.type)}</td>
         <td class="num">${unitField(r.oid, r.units, 'style="width:84px;text-align:right"')}</td>
         <td>${affCell(r.affinity)}</td>
         <td><button class="linkbtn" data-rm="${esc(r.oid)}" title="Remove style">×</button></td></tr>`).join("")}
@@ -627,20 +747,38 @@ const Plan = (() => {
     host.innerHTML = html;
 
     bindOverrides(host); // no refreshDerived inside #ls-output (guard in data.js)
+    const wipPullBtn = $("#wip-pull", host);
+    if (wipPullBtn) wipPullBtn.addEventListener("click", () => {
+      const sheet = wipLinesheet(wipMatch.norm).map(s => ({
+        style: s.style, type: s.type, units: s.units,
+        received: s.received, on_order: s.on_order, pos: s.pos
+      }));
+      Store.set(key + "_wip", sheet);
+      renderDraft(tm);
+    });
+    const wipClearBtn = $("#wip-clear", host);
+    if (wipClearBtn) wipClearBtn.addEventListener("click", () => {
+      Store.remove(key + "_wip");
+      renderDraft(tm);
+    });
     const recount = () => {
       const alloc = rows.reduce((s, r) => s + valOf(r), 0);
-      setAllocNote(tm, f, tierUnits, stFrac, alloc, isRecut, buyUnits, scope);
+      setAllocNote(tm, f, tierUnits, stFrac, alloc, isRecut, buyUnits, scope,
+                   useWip ? wipMatch.display : null);
     };
     $$("input[data-override]", host).forEach(inp => inp.addEventListener("input", recount));
     $$("button[data-rm]", host).forEach(b => b.addEventListener("click", () => {
       const oid = b.dataset.rm;
-      const m = oid.match(/_s(\d+)$/);
-      if (m) {
+      const sm = oid.match(/_s(\d+)$/);
+      const xm = oid.match(/_x(\d+)$/);
+      const wm = oid.match(/_w(\d+)$/);
+      if (sm) {
         const rem = new Set(Store.get(key + "_removed", []));
-        rem.add(+m[1]); Store.set(key + "_removed", [...rem]);
-      } else {
-        const xm = oid.match(/_x(\d+)$/);
-        if (xm) { const ex = Store.get(key + "_extra", []); ex.splice(+xm[1], 1); Store.set(key + "_extra", ex); }
+        rem.add(+sm[1]); Store.set(key + "_removed", [...rem]);
+      } else if (xm) {
+        const ex = Store.get(key + "_extra", []); ex.splice(+xm[1], 1); Store.set(key + "_extra", ex);
+      } else if (wm) {
+        const w = Store.get(key + "_wip", []); w.splice(+wm[1], 1); Store.set(key + "_wip", w);
       }
       renderDraft(tm);
     }));
@@ -649,14 +787,15 @@ const Plan = (() => {
     recount();
   }
 
-  function setAllocNote(tm, f, tierUnits, stFrac, allocated, isRecut, buyUnits, scope) {
+  function setAllocNote(tm, f, tierUnits, stFrac, allocated, isRecut, buyUnits, scope, wipMode) {
     const n = scope ? $("#al-note", scope) : $("#al-note");
     if (!n) return;
     const gpct = Math.round(tm.asm.sell_through * 100), spct = Math.round(stFrac * 100);
     const buy = (buyUnits !== undefined) ? buyUnits : Math.max(0, Math.round(+f.totalUnits || 0));
     const exp = cwExpected(buy, stFrac);
     n.textContent = `Expected sell-through ${spct}% (default ${gpct}%): ${fmt(buy)}u buy → ${fmt(exp.sales)} expected sales, ${fmt(exp.leftover)} planned leftover. ` +
-      `Affinity starts the draft; manual style and unit overrides are active. ${fmt(allocated)} of ${fmt(buy)} units allocated.` +
+      (wipMode ? `Linesheet pulled from WIP color "${wipMode}". ` : `Affinity starts the draft; manual style and unit overrides are active. `) +
+      `${fmt(allocated)} of ${fmt(buy)} units allocated.` +
       (isRecut ? " Recut hole target shown." : "");
   }
 
@@ -813,6 +952,101 @@ const Plan = (() => {
       Store.set("drop_colors_" + did, arr);
       refreshDerived();
     }));
+  }
+
+  /* ----- style coverage: YoY need vs on hand vs planned (net) -----
+   * One row per style. Need = same calendar months last year (Dec 2026–Nov 2027
+   * planning window) × growth ÷ sell-through. On hand nets out sample-sale
+   * colors/locations and Bridgehampton. Planned = sum across saved colorways.
+   * Net gap = need − on hand − planned. */
+  function styleCoverageCard(root, tm) {
+    const asm = tm.asm;
+    const normKey = s => String(s == null ? "" : s).toLowerCase().trim();
+    const wins = DATA.meta.drops.map(d => d.window);
+    const planMonths = monthsBetween(wins[0][0], wins[wins.length - 1][wins[wins.length - 1].length - 1]);
+    const priorMonths = planMonths.map(ym => (parseInt(ym.slice(0, 4), 10) - 1) + ym.slice(4));
+    const growthF = 1 + (asm.growth_pct || 0) / 100;
+    const stDef = asm.sell_through || 0.7;
+
+    const labelOf = {};
+    const yoyByStyle = {};
+    Object.entries(DATA.styleVelocity || {}).forEach(([key, hist]) => {
+      const style = key.split("|")[0];
+      const nk = normKey(style);
+      if (!labelOf[nk]) labelOf[nk] = String(style).trim();
+      let u = 0;
+      priorMonths.forEach(ym => { u += (+hist[ym] || 0); });
+      yoyByStyle[nk] = (yoyByStyle[nk] || 0) + u;
+    });
+
+    const colorExcluded = new Set([...(DATA.meta.pull_list_colors || []), ...(DATA.meta.dead_colors || [])].map(normKey));
+    const storeExcluded = new Set([...(DATA.meta.excluded_sample_locations || []), "Bridgehampton"].map(normKey));
+    const onHand = {};
+    (DATA.inventory || []).forEach(r => {
+      if (colorExcluded.has(normKey(r.c))) return;
+      const nk = normKey(r.s);
+      if (!labelOf[nk]) labelOf[nk] = String(r.s || "").trim();
+      let q = 0;
+      Object.entries(r.st || {}).forEach(([store, qty]) => {
+        if (!storeExcluded.has(normKey(store))) q += (+qty || 0);
+      });
+      onHand[nk] = (onHand[nk] || 0) + q;
+    });
+
+    const planned = {};
+    DATA.meta.drops.forEach(d => {
+      (Store.get("drop_colors_" + d.id, []) || []).forEach(c => {
+        (c.styles || []).forEach(s => {
+          const nk = normKey(s.style);
+          if (!labelOf[nk]) labelOf[nk] = String(s.style || "").trim();
+          planned[nk] = (planned[nk] || 0) + (+s.units || 0);
+        });
+      });
+    });
+
+    const rows = [];
+    new Set([...Object.keys(yoyByStyle), ...Object.keys(onHand), ...Object.keys(planned)]).forEach(nk => {
+      const hasHist = nk in yoyByStyle;
+      const need = hasHist ? Math.round((yoyByStyle[nk] || 0) * growthF / stDef) : null;
+      const oh = Math.round(onHand[nk] || 0);
+      const pl = Math.round(planned[nk] || 0);
+      const netGap = need === null ? null : need - oh - pl;
+      let status;
+      if (need === null) status = `<span class="pill info">new style</span>`;
+      else if (netGap > 0) status = `<span class="pill ${netGap / need > 0.25 ? "bad" : "warn"}">short ${fmt(netGap)}</span>`;
+      else status = `<span class="pill ok">covered</span>`;
+      rows.push({ nk, label: labelOf[nk] || nk, need, oh, pl, netGap, status });
+    });
+    rows.sort((a, b) => {
+      const ga = a.netGap === null ? -Infinity : a.netGap;
+      const gb = b.netGap === null ? -Infinity : b.netGap;
+      if (gb !== ga) return gb - ga;
+      return (b.need === null ? -1 : b.need) - (a.need === null ? -1 : a.need);
+    });
+
+    const el = document.createElement("div");
+    el.className = "card";
+    el.innerHTML = `<h2>Style coverage</h2>
+      <p class="lede">Need = same months last year × growth ÷ sell-through · Net gap = need − on hand − planned across your saved colorways.</p>
+      <p><input type="text" id="cov-q" placeholder="Find a style" style="width:240px"></p>
+      <div style="max-height:520px;overflow:auto"><table id="cov-table">
+      <tr><th>Style</th><th class="num">Need</th><th class="num">On hand</th><th class="num">Planned</th><th class="num">Net gap</th><th>Status</th></tr>
+      ${rows.map(r => `<tr data-s="${esc(r.label.toLowerCase())}">
+        <td><b>${esc(r.label)}</b></td>
+        <td class="num">${r.need === null ? "—" : fmt(r.need)}</td>
+        <td class="num">${fmt(r.oh)}</td>
+        <td class="num">${fmt(r.pl)}</td>
+        <td class="num">${r.netGap === null ? "—" : (r.netGap > 0 ? "+" : "") + fmt(r.netGap)}</td>
+        <td>${r.status}</td></tr>`).join("")}
+      </table></div>
+      <p class="hint">${rows.length} styles · on hand nets out sample-sale colors/locations and Bridgehampton.</p>`;
+    root.appendChild(el);
+    $("#cov-q", el).addEventListener("input", e => {
+      const q = e.target.value.toLowerCase();
+      $$("#cov-table tr[data-s]", el).forEach(tr => {
+        tr.style.display = tr.dataset.s.includes(q) ? "" : "none";
+      });
+    });
   }
 
   /* ----- schedule tracker ----- */

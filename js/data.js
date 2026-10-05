@@ -1,7 +1,8 @@
 /* data.js — loads baked-in JSON datasets and exposes them as DATA. */
 const DATA = {
   meta: null, colors: [], inventory: [], demand: null,
-  affinity: null, black: [], styleVelocity: {}, alerts: [], transfers: []
+  affinity: null, black: [], styleVelocity: {}, alerts: [], transfers: [],
+  wip: null
 };
 
 async function loadData() {
@@ -24,6 +25,15 @@ async function loadData() {
     })
   );
   entries.forEach(([k, v]) => { DATA[k] = v; });
+  // WIP is optional: the linesheet-pull feature hides itself when it's absent.
+  try {
+    const r = await fetch("data/wip.json");
+    if (r.ok) {
+      const w = await r.json();
+      DATA.wip = Array.isArray(w) ? { rows: w } : w;
+      if (!Array.isArray(DATA.wip.rows)) DATA.wip = { rows: [] };
+    }
+  } catch (e) { /* leave DATA.wip null */ }
   return DATA;
 }
 
