@@ -469,6 +469,30 @@ const Plan = (() => {
     }
     return null;
   }
+  /* Joint basket count for a pair (sample size behind the attach rate). */
+  function pairN(givenStyle, targetStyle) {
+    const g = String(givenStyle || ""), t = String(targetStyle || "");
+    if (!g || !t || g === t) return 0;
+    const pairs = (DATA.affinity && DATA.affinity.pairs) || [];
+    for (const p of pairs) {
+      if ((p.a === g && p.b === t) || (p.b === g && p.a === t)) return p.n || 0;
+    }
+    return 0;
+  }
+  /* Smoothed P(target | given) for ALLOCATION: high percentages built on tiny
+   * basket counts (e.g. 41% from n=55) are noisy, so we shrink them toward the
+   * target's marginal rate. Solid rates (n=551) barely move. This stops niche
+   * styles from outranking proven set partners in the cut. alpha=50. */
+  function pairAttachSmoothed(givenStyle, targetStyle) {
+    const raw = pairAttach(givenStyle, targetStyle);
+    if (raw == null) return null;
+    const aff = DATA.affinity || {};
+    const sb = aff.style_baskets || {}, tot = aff.total_multi_baskets || 0;
+    const t = String(targetStyle || "");
+    const marginal = (tot > 0 && sb[t] != null) ? sb[t] / tot : raw;
+    const alpha = 50, n = pairN(givenStyle, targetStyle);
+    return (n * raw + alpha * marginal) / (n + alpha);
+  }
   function affinityFor(style) {
     const out = [];
     const tSelf = styleTypeGuess(style);
@@ -636,15 +660,17 @@ const Plan = (() => {
     return rows.map(r => r.q);
   }
   /* Attach-rate correction: reweight a type's draft units toward set-implied demand.
-   * For each target style: implied = Σ over given-side rows of (given units × P(target | given)).
+   * For each target style: implied = Σ over given-side rows of (given units × smoothed P(target | given)).
+   * Smoothing shrinks noisy small-sample rates toward the marginal, so niche styles
+   * can't outrank proven set partners on a shaky 41%-from-55-baskets.
    * New units = 50% velocity split + 50% set-implied, renormalized to the type budget.
    * Never adds/removes styles — reweights only. No-op when no pair data exists. */
   function correctByAttach(groups, targetType, givenType) {
     const T = groups[targetType], G = groups[givenType];
-    if (!T || !G || !T.styles.length || !G.styles.length || !(T.units > 0)) return;
+    if (!T || !T.styles.length || !G || !G.styles.length || !(T.units > 0)) return;
     const implied = T.styles.map(t =>
       G.styles.reduce((s, g) => {
-        const a = pairAttach(g.style, t.style);
+        const a = pairAttachSmoothed(g.style, t.style);
         return s + (a != null ? g.units * a : 0);
       }, 0));
     const impSum = implied.reduce((a, b) => a + b, 0);
@@ -1448,6 +1474,6 @@ const Plan = (() => {
 
   return { render, dropMath, dropCalc, tierMath, downloadCSV, cwNameKey, cwStFrac, cwMonths,
            cwSellOut, cwExpected, cwBuyUnitsEntry, slotBuyUnits, styleTypeGuess,
-           ACTIVE_STOCK_STORES, activeStoreList, pairAttach, buildDraft, topStylesByType, affCell,
+           ACTIVE_STOCK_STORES, activeStoreList, pairAttach, pairAttachSmoothed, buildDraft, topStylesByType, affCell,
            correctByAttach, computeHoles };
 })();
