@@ -646,17 +646,19 @@ const Plan = (() => {
     }
     return Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, n).map(e => e[0]);
   }
-  /* Split integer units across weights with largest-remainder so they sum exactly. */
+  /* Split integer units across weights with largest-remainder so they sum exactly.
+   * Preserves input order: remainders are ranked on a copy, then mapped back. */
   function splitUnits(weights, total) {
     const wsum = weights.reduce((a, b) => a + b, 0);
     if (!(wsum > 0) || !(total > 0)) return weights.map(() => 0);
-    const rows = weights.map(w => {
+    const rows = weights.map((w, i) => {
       const exact = total * w / wsum;
-      return { q: Math.floor(exact), rem: exact - Math.floor(exact) };
+      return { i, q: Math.floor(exact), rem: exact - Math.floor(exact) };
     });
     let left = total - rows.reduce((s, r) => s + r.q, 0);
-    rows.sort((a, b) => b.rem - a.rem);
-    for (let i = 0; i < rows.length && left > 0; i++, left--) rows[i].q++;
+    const byRem = rows.slice().sort((a, b) => b.rem - a.rem);
+    for (let k = 0; k < byRem.length && left > 0; k++, left--) byRem[k].q++;
+    rows.sort((a, b) => a.i - b.i);
     return rows.map(r => r.q);
   }
   /* Attach-rate correction: reweight a type's draft units toward set-implied demand.
@@ -690,10 +692,11 @@ const Plan = (() => {
       const assigned = splitUnits(weights, units);
       groups[type] = { styles: styles.map((s, i) => ({ style: s, units: assigned[i] })), units };
     });
-    // "Not every juliette buyer buys a cinch": correct the assortment with attach
-    // rates (auto-draft only — typed overrides always win at render via valOf).
+    // "Not every juliette buyer buys a cinch": correct BOTTOMS with attach rates
+    // (auto-draft only — typed overrides always win at render via valOf).
+    // Tops stay pure velocity: reweighting tops from bottoms would be circular
+    // (bottoms were just sized from tops) and starves best sellers like juliette.
     correctByAttach(groups, "bottoms", "tops");
-    correctByAttach(groups, "tops", "bottoms");
     // Maillots: one piece, no pairing signal — velocity allocation only, no attach correction.
     const draft = [];
     ["tops", "bottoms", "maillots"].forEach(type => {
