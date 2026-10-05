@@ -827,6 +827,7 @@ const Plan = (() => {
       </div>
       <div class="alloc-head">
         <p class="affinity-note" id="al-note"></p>
+        <button class="btn ghost" id="al-clear">New colorway</button>
         <button class="btn" id="al-save">Add colorway to session plan</button>
       </div>
       <div id="al-timeline"></div>
@@ -880,6 +881,10 @@ const Plan = (() => {
       renderDraft(tm);
     });
     $("#al-save", el).addEventListener("click", () => saveColorway(tm));
+    $("#al-clear", el).addEventListener("click", () => {
+      Store.set("alloc_form", {});
+      refreshDerived();
+    });
 
     renderSessionBox(el, tm);
     renderDraft(tm, el);
@@ -1118,6 +1123,9 @@ const Plan = (() => {
     arr.push({ name: rawName, grade: f.grade, units: tierUnits, buy, st: stFrac, months,
                family: f.family, fabric: f.fabric, styles });
     Store.set("drop_colors_" + f.dropId, arr);
+    // Clear the form so the next colorway starts fresh (otherwise the saved
+    // name sticks around and you can't start a new color).
+    Store.set("alloc_form", {});
     refreshDerived();
   }
 
