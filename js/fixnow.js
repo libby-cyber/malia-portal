@@ -5,12 +5,14 @@
 const FixNow = (() => {
   function sections() {
     const alerts = DATA.alerts;
+    const maxVel = a => Math.max(+a.vel_wk || 0, +a.recent_wk || 0);
     return {
       hot: alerts.filter(a => a.status === "low_cover")
         .sort((a, b) => (a.cover_wk || 99) - (b.cover_wk || 99)).slice(0, 30),
-      sellouts: alerts.filter(a => a.status === "stockout_demand").slice(0, 30),
+      sellouts: alerts.filter(a => a.status === "stockout_demand")
+        .sort((a, b) => maxVel(b) - maxVel(a)).slice(0, 30),
       hidden: alerts.filter(a => a.status === "unknown_stockout").slice(0, 30),
-      transfers: DATA.transfers
+      transfers: getTransfers()
     };
   }
 
@@ -19,6 +21,111 @@ const FixNow = (() => {
     if (a.status === "unknown_stockout") return `<span class="pill info">Unknown — was stocked out</span>`;
     if (a.status === "low_cover") return `<span class="pill warn">low cover</span>`;
     return `<span class="pill ok">ok</span>`;
+  }
+  const fmt2 = n => (n == null || !isFinite(n)) ? "—" : Number(n).toFixed(2);
+
+  /* ---------- broken-affinity transfers, recomputed live ----------
+   * The baked 2-row precompute was far too narrow. For each active store and
+   * each tops<->bottoms affinity pair (maillots are their own thing — no set
+   * completion applies), a store holding one side but zero of the other is a
+   * candidate, ranked per store by pair basket count. Each suggestion names
+   * WHICH color to pull and from where, plus the have-side's top colors. */
+  const TR_MIN_PAIR_N = 20;   // pair must appear in this many baskets
+  const TR_MIN_AVAIL = 5;     // missing side needs this many units elsewhere
+  const TR_PER_STORE = 10;    // cap suggestions per store
+  function styleTypeOf(s) {
+    if (typeof Plan !== "undefined" && Plan.styleTypeGuess) return Plan.styleTypeGuess(s);
+    const x = String(s || "").toLowerCase(); // defensive fallback (plan.js loads first)
+    if (["maillot", "one piece", "one-piece", "suit"].some(w => x.includes(w))) return "maillots";
+    if (["cinch", "bambi", "brief", "bottom", "cheeky", "thong", "bikini bottom"].some(w => x.includes(w))) return "bottoms";
+    return "tops";
+  }
+  function computeTransfers() {
+    const norm = s => String(s == null ? "" : s).toLowerCase().trim();
+    const exclColors = new Set([...(DATA.meta.pull_list_colors || []), ...(DATA.meta.dead_colors || [])].map(norm));
+    // Authoritative 6-store model: Plan owns it; local fallback keeps this working standalone.
+    const six = (typeof Plan !== "undefined" && Plan.ACTIVE_STOCK_STORES) ||
+      ["Wooster", "Madison", "Marin", "Montecito", "Los Angeles", "San Francisco"];
+    const stores = six.slice();
+    const storeSet = new Set(six.map(norm));
+    const byStyle = {};
+    (DATA.inventory || []).forEach(r => {
+      if (exclColors.has(norm(r.c))) return;
+      const k = norm(r.s);
+      (byStyle[k] = byStyle[k] || []).push(r);
+    });
+    const qtyAt = (styleKey, store) => {
+      let q = 0;
+      (byStyle[styleKey] || []).forEach(r => { q += +((r.st || {})[store] || 0); });
+      return q;
+    };
+    const colorsAt = (styleKey, store) => {
+      const m = {};
+      (byStyle[styleKey] || []).forEach(r => {
+        const q = +((r.st || {})[store] || 0);
+        if (q > 0) m[r.c] = (m[r.c] || 0) + q;
+      });
+      return Object.entries(m).sort((a, b) => b[1] - a[1]);
+    };
+    const availElsewhere = (styleKey, store) => {
+      const m = {};
+      (byStyle[styleKey] || []).forEach(r => {
+        Object.entries(r.st || {}).forEach(([st, q]) => {
+          if (norm(st) === norm(store) || !storeSet.has(norm(st))) return;
+          q = +q || 0;
+          if (q <= 0) return;
+          const e = m[r.c] = m[r.c] || { qty: 0, src: {} };
+          e.qty += q;
+          e.src[st] = (e.src[st] || 0) + q;
+        });
+      });
+      return Object.entries(m)
+        .map(([color, e]) => ({ color, qty: e.qty,
+          sources: Object.entries(e.src).sort((a, b) => b[1] - a[1]) }))
+        .sort((a, b) => b.qty - a.qty);
+    };
+    const out = [];
+    (DATA.affinity.pairs || []).forEach(p => {
+      if ((+p.n || 0) < TR_MIN_PAIR_N) return;
+      const ta = styleTypeOf(p.a), tb = styleTypeOf(p.b);
+      const setPair = (ta === "tops" && tb === "bottoms") || (ta === "bottoms" && tb === "tops");
+      if (!setPair) return;
+      const ka = norm(p.a), kb = norm(p.b);
+      stores.forEach(store => {
+        [[p.a, ka, p.b, kb], [p.b, kb, p.a, ka]].forEach(([haveS, haveK, missS, missK]) => {
+          const haveQ = qtyAt(haveK, store);
+          if (!(haveQ > 0)) return;
+          if (qtyAt(missK, store) > 0) return;
+          const avail = availElsewhere(missK, store);
+          if (avail.reduce((s, a) => s + a.qty, 0) < TR_MIN_AVAIL) return;
+          const haveColors = colorsAt(haveK, store).slice(0, 2).map(([c]) => c);
+          const pullOpts = avail.slice(0, 3).map(a =>
+            `${a.color} (${fmt(a.qty)}u via ${a.sources[0][0]})`).join(" or ");
+          out.push({
+            pair: `${p.a} + ${p.b}`, n: p.n, store,
+            suggestion: `${store} has ${fmt(haveQ)}× ${haveS}` +
+              (haveColors.length ? ` (mostly ${haveColors.join(", ")})` : "") +
+              ` but no ${missS} — pull ${pullOpts} to complete the set.`
+          });
+        });
+      });
+    });
+    // rank per store by pair strength, cap TR_PER_STORE
+    const ranked = [];
+    stores.forEach(store => {
+      out.filter(t => t.store === store)
+        .sort((a, b) => b.n - a.n)
+        .slice(0, TR_PER_STORE)
+        .forEach((t, i) => ranked.push({ ...t, rank: i + 1 }));
+    });
+    return ranked;
+  }
+  function getTransfers() {
+    try {
+      const c = computeTransfers();
+      if (c && c.length) return c;
+    } catch (e) { /* defensive fallback below */ }
+    return DATA.transfers || [];
   }
 
   function velTable(list, actionCol) {
@@ -49,9 +156,10 @@ const FixNow = (() => {
     <div class="card"><h2>${act ? "Stocked out — demand exists" : "Projected sell-outs"} <span class="muted small">(${s.sellouts.length})</span></h2>
       <p class="lede">${act ? "Zero on-hand with measurable demand. Transfer in or reorder; sample-sale colors excluded."
         : "Zero on-hand with measurable demand. Sample-sale colors excluded."}</p>
-      ${s.sellouts.length ? `<table><tr><th>Style</th><th>Color</th><th>Size</th><th class="num">Vel/wk</th><th>Status</th>${act ? "<th>Suggested action</th>" : ""}</tr>
+      <p class="hint">Demand = same period last year <i>or</i> recent weeks. Styles with YoY 0 but recent sales are newer colors with no year-ago history.</p>
+      ${s.sellouts.length ? `<table><tr><th>Style</th><th>Color</th><th>Size</th><th class="num">Vel/wk (YoY)</th><th class="num">Vel/wk (recent)</th><th>Status</th>${act ? "<th>Suggested action</th>" : ""}</tr>
       ${s.sellouts.map(a => `<tr><td>${esc(a.style)}</td><td>${esc(a.color)}</td><td>${esc(a.size)}</td>
-        <td class="num">${a.vel_wk}</td><td>${statusPill(a)}</td>
+        <td class="num">${fmt2(a.vel_wk)}</td><td class="num">${fmt2(a.recent_wk)}</td><td>${statusPill(a)}</td>
         ${act ? `<td class="small">Transfer in or reorder</td>` : ""}</tr>`).join("")}</table>`
       : `<p class="empty">None.</p>`}
     </div>`;
@@ -60,7 +168,7 @@ const FixNow = (() => {
     <div class="card"><h2>${act ? "Urgent transfers" : "Broken affinity — transfer suggestions"} <span class="muted small">(${s.transfers.length})</span></h2>
       <p class="lede">Basket affinity at work: these pairs sell together in the same receipt. A store holding one side without the other is leaving complete sets on the table — move units to fix it.</p>
       ${s.transfers.length ? s.transfers.map(t => `
-        <div class="alert-row"><div><b>${esc(t.pair)}</b> <span class="muted small">(${t.n} baskets)</span><br>
+        <div class="alert-row"><div>${t.rank ? `<span class="pill info">#${t.rank}</span> ` : ""}<b>${esc(t.pair)}</b> <span class="muted small">(${t.n} baskets)</span><br>
         <span class="small">${esc(t.suggestion)}</span></div></div>`).join("")
       : `<p class="empty">No imbalances found.</p>`}
     </div>`;

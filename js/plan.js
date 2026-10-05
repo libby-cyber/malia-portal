@@ -455,13 +455,162 @@ const Plan = (() => {
     if (["maillot", "one piece", "one-piece", "suit"].some(w => s.includes(w))) return "maillots";
     return "tops";
   }
+  /* P(target | given): share of multi-item baskets containing `given` that also
+   * contain `target`. Direction matters: pairAttach("juliette a/b/c", "it's a cinch")
+   * = P(cinch | juliette) = attach_ba when the pair is stored as a=cinch, b=juliette.
+   * Returns null when no pair record exists (graceful if fields are missing). */
+  function pairAttach(givenStyle, targetStyle) {
+    const g = String(givenStyle || ""), t = String(targetStyle || "");
+    if (!g || !t || g === t) return null;
+    const pairs = (DATA.affinity && DATA.affinity.pairs) || [];
+    for (const p of pairs) {
+      if (p.a === g && p.b === t) return p.attach_ab != null ? +p.attach_ab : null;
+      if (p.b === g && p.a === t) return p.attach_ba != null ? +p.attach_ba : null;
+    }
+    return null;
+  }
   function affinityFor(style) {
     const out = [];
-    DATA.affinity.pairs.forEach(p => {
-      if (p.a === style) out.push({ other: p.b, n: p.n });
-      else if (p.b === style) out.push({ other: p.a, n: p.n });
+    const tSelf = styleTypeGuess(style);
+    (DATA.affinity.pairs || []).forEach(p => {
+      let other = null, attach = null;
+      if (p.a === style) { other = p.b; attach = p.attach_ab; }   // P(other | style) = P(b | a)
+      else if (p.b === style) { other = p.a; attach = p.attach_ba; } // P(other | style) = P(a | b)
+      if (other === null) return;
+      // Maillots are their own thing: a pair involving a maillot only surfaces
+      // when BOTH sides are maillots. Tops<->bottoms logic is unchanged.
+      const tOther = styleTypeGuess(other);
+      if ((tSelf === "maillots" || tOther === "maillots") && !(tSelf === "maillots" && tOther === "maillots")) return;
+      out.push({ other, n: p.n, attach: attach != null ? +attach : null });
     });
     return out.sort((x, y) => y.n - x.n).slice(0, 5);
+  }
+
+  /* ---------- size curves + cutting viability ----------
+   * Size explosion uses REAL size selling: data/size_curves.json (built from
+   * actual transactions: {style: {total, sizes: {size: fraction}}}). Fallback
+   * chain for styles missing there: WIP received-by-size -> inventory size
+   * distribution -> even split across sizes observed for the same product
+   * type in WIP. */
+  let _sizeCurves = null;
+  function toFracs(bySize) {
+    const tot = Object.values(bySize).reduce((a, b) => a + b, 0) || 1;
+    return Object.entries(bySize).map(([size, q]) => ({ size, frac: q / tot }));
+  }
+  function sizeCurve(style) {
+    if (!_sizeCurves) _sizeCurves = {};
+    const key = String(style || "").toLowerCase().trim();
+    if (_sizeCurves[key]) return _sizeCurves[key];
+    const wrows = (DATA.wip && DATA.wip.rows) || [];
+    let curve = null;
+    // 1) real size selling from transactions
+    const selling = (DATA.sizeCurves || {})[key];
+    if (selling && selling.sizes) {
+      const entries = Object.entries(selling.sizes).filter(([, f]) => +f > 0);
+      if (entries.length) {
+        const tot = entries.reduce((s, [, f]) => s + (+f), 0) || 1;
+        curve = entries.map(([size, f]) => ({ size, frac: (+f) / tot }));
+      }
+    }
+    // 2) WIP received by size
+    if (!curve) {
+      const bySize = {};
+      wrows.forEach(r => {
+        if (String(r.style || "").toLowerCase().trim() !== key) return;
+        const q = +r.received || 0;
+        if (q > 0) bySize[r.size] = (bySize[r.size] || 0) + q;
+      });
+      if (Object.keys(bySize).length) curve = toFracs(bySize);
+    }
+    // 3) inventory size distribution
+    if (!curve) {
+      const bySize = {};
+      (DATA.inventory || []).forEach(r => {
+        if (String(r.s || "").toLowerCase().trim() !== key) return;
+        const q = +r.t || 0;
+        if (q > 0) bySize[r.z] = (bySize[r.z] || 0) + q;
+      });
+      if (Object.keys(bySize).length) curve = toFracs(bySize);
+    }
+    // 4) even split across sizes observed for the same product type in WIP
+    if (!curve) {
+      const t = styleTypeGuess(style);
+      const seen = {};
+      wrows.forEach(r => {
+        if (styleTypeGuess(r.style) !== t) return;
+        seen[r.size] = true;
+      });
+      const sizes = Object.keys(seen);
+      curve = sizes.map(s => ({ size: s, frac: 1 / (sizes.length || 1) }));
+    }
+    _sizeCurves[key] = curve || [];
+    return _sizeCurves[key];
+  }
+  function explodeUnits(style, units) {
+    const curve = sizeCurve(style);
+    const U = Math.max(0, Math.round(units));
+    if (!curve.length || U <= 0) return [];
+    const rows = curve.map(c => ({
+      size: c.size, qty: Math.floor(U * c.frac), rem: U * c.frac - Math.floor(U * c.frac)
+    }));
+    let left = U - rows.reduce((s, r) => s + r.qty, 0);
+    rows.sort((a, b) => b.rem - a.rem);
+    for (let i = 0; i < rows.length && left > 0; i++, left--) rows[i].qty++;
+    const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+    rows.sort((a, b) => {
+      const na = num(a.size), nb = num(b.size);
+      if (na !== null && nb !== null) return na - nb;
+      return String(a.size).localeCompare(String(b.size));
+    });
+    return rows;
+  }
+  /* Authoritative store model (user-confirmed 2026-10-05): these 6 hold stock.
+   * Web Store / Web Store California are demand-only (no inventory); Bridgehampton
+   * is seasonal and currently closed; Studio/Brentwood are not stores. */
+  const ACTIVE_STOCK_STORES = ["Wooster", "Madison", "Marin", "Montecito", "Los Angeles", "San Francisco"];
+  function activeStoreList() {
+    return ACTIVE_STOCK_STORES.slice();
+  }
+  /* thin-ticket flag: fires only when even the LARGEST per-size allocation
+   * can't cover every active store (the user doesn't need 1-per-size as a
+   * hard rule — this is a check, not a blocker). */
+  function coverageFlag(style, units) {
+    const U = Math.round(+units || 0);
+    if (!(U > 0)) return "";
+    const nStores = activeStoreList().length;
+    const exploded = explodeUnits(style, U);
+    if (!exploded.length || !nStores) return "";
+    const top = exploded.reduce((a, b) => (b.qty > a.qty ? b : a), exploded[0]);
+    if (top.qty >= nStores) return "";
+    return `<span class="pill warn" title="largest size allocation is below one per store">thin ticket — check store coverage</span>` +
+      `<div class="faint small">${U}u → size ${esc(top.size)} gets ~${fmt(top.qty)}u across ${nStores} stores — most stores miss.</div>`;
+  }
+  /* compact one-line size expandables: <button class="sizes-toggle" data-style>
+   * with data-sizes-units for static contexts, else reads the row's units input */
+  function bindSizeToggles(host) {
+    $$(".sizes-toggle", host).forEach(b => {
+      b.addEventListener("click", () => {
+        const cell = b.closest("td");
+        const det = cell ? cell.querySelector(".sizedetail") : null;
+        if (!det) return;
+        let units;
+        if (b.dataset.sizesUnits !== undefined && b.dataset.sizesUnits !== "") {
+          units = +b.dataset.sizesUnits;
+        } else {
+          const tr = b.closest("tr");
+          const inp = tr ? tr.querySelector("input[data-override]") : null;
+          units = inp ? (+inp.value || 0) : 0;
+        }
+        if (det.hidden) {
+          const parts = explodeUnits(b.dataset.style, units);
+          det.innerHTML = parts.length
+            ? parts.map(p => `${esc(p.size)}: ${fmt(p.qty)}u`).join(" · ")
+            : `<span class="faint">no size curve</span>`;
+        }
+        det.hidden = !det.hidden;
+        b.textContent = det.hidden ? "sizes ▸" : "sizes ▾";
+      });
+    });
   }
   function topStylesByType(type, n) {
     const totals = {};
@@ -472,27 +621,71 @@ const Plan = (() => {
     }
     return Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, n).map(e => e[0]);
   }
+  /* Split integer units across weights with largest-remainder so they sum exactly. */
+  function splitUnits(weights, total) {
+    const wsum = weights.reduce((a, b) => a + b, 0);
+    if (!(wsum > 0) || !(total > 0)) return weights.map(() => 0);
+    const rows = weights.map(w => {
+      const exact = total * w / wsum;
+      return { q: Math.floor(exact), rem: exact - Math.floor(exact) };
+    });
+    let left = total - rows.reduce((s, r) => s + r.q, 0);
+    rows.sort((a, b) => b.rem - a.rem);
+    for (let i = 0; i < rows.length && left > 0; i++, left--) rows[i].q++;
+    return rows.map(r => r.q);
+  }
+  /* Attach-rate correction: reweight a type's draft units toward set-implied demand.
+   * For each target style: implied = Σ over given-side rows of (given units × P(target | given)).
+   * New units = 50% velocity split + 50% set-implied, renormalized to the type budget.
+   * Never adds/removes styles — reweights only. No-op when no pair data exists. */
+  function correctByAttach(groups, targetType, givenType) {
+    const T = groups[targetType], G = groups[givenType];
+    if (!T || !G || !T.styles.length || !G.styles.length || !(T.units > 0)) return;
+    const implied = T.styles.map(t =>
+      G.styles.reduce((s, g) => {
+        const a = pairAttach(g.style, t.style);
+        return s + (a != null ? g.units * a : 0);
+      }, 0));
+    const impSum = implied.reduce((a, b) => a + b, 0);
+    if (!(impSum > 0)) return;
+    const blended = T.styles.map((t, i) => 0.5 * t.units + 0.5 * (implied[i] / impSum) * T.units);
+    const fixed = splitUnits(blended, T.units);
+    T.styles.forEach((t, i) => { t.units = fixed[i]; });
+  }
   function buildDraft(tierUnits, tp, bp, mp) {
-    const draft = [];
+    const groups = {};
     [["tops", Math.round(tierUnits * tp)], ["bottoms", Math.round(tierUnits * bp)],
      ["maillots", Math.round(tierUnits * mp)]].forEach(([type, units]) => {
-      if (units <= 0) return;
+      if (units <= 0) { groups[type] = { styles: [], units: 0 }; return; }
       const styles = topStylesByType(type, 5);
-      if (!styles.length) { draft.push({ style: "(no " + type + " styles found)", type, units, affinity: [] }); return; }
+      if (!styles.length) { groups[type] = { styles: [], units, empty: true }; return; }
       const weights = styles.map((_, i) => styles.length - i);
-      const wsum = weights.reduce((a, b) => a + b, 0);
-      let assigned = 0;
-      styles.forEach((s, i) => {
-        const u = (i === styles.length - 1) ? units - assigned : Math.round(units * weights[i] / wsum);
-        assigned += u;
-        draft.push({ style: s, type, units: u, affinity: affinityFor(s).slice(0, 3) });
-      });
+      const assigned = splitUnits(weights, units);
+      groups[type] = { styles: styles.map((s, i) => ({ style: s, units: assigned[i] })), units };
+    });
+    // "Not every juliette buyer buys a cinch": correct the assortment with attach
+    // rates (auto-draft only — typed overrides always win at render via valOf).
+    correctByAttach(groups, "bottoms", "tops");
+    correctByAttach(groups, "tops", "bottoms");
+    correctByAttach(groups, "maillots", "maillots"); // no-op: no maillot<->maillot pairs in data
+    const draft = [];
+    ["tops", "bottoms", "maillots"].forEach(type => {
+      const g = groups[type];
+      if (g.empty) { draft.push({ style: "(no " + type + " styles found)", type, units: g.units, affinity: [] }); return; }
+      g.styles.forEach(s => draft.push({ style: s.style, type, units: s.units, affinity: affinityFor(s.style).slice(0, 3) }));
     });
     return draft;
   }
   function computeHoles(colorName, tierUnits, tp, bp, mp, rows) {
     const avail = {};
-    rows.forEach(r => { avail[r.s] = (avail[r.s] || 0) + r.t; });
+    const stockSet = new Set(ACTIVE_STOCK_STORES.map(s => String(s).toLowerCase().trim()));
+    rows.forEach(r => {
+      let q = 0;
+      Object.entries(r.st || {}).forEach(([store, qty]) => {
+        if (stockSet.has(String(store).toLowerCase().trim())) q += (+qty || 0);
+      });
+      avail[r.s] = (avail[r.s] || 0) + q;
+    });
     const draft = buildDraft(tierUnits, tp, bp, mp);
     let total = 0;
     const perStyle = draft.map(d => {
@@ -507,12 +700,15 @@ const Plan = (() => {
 
   let _lastDraft = null;
 
-  /* affinity cell: top pairing partner front and center, rest as footnote */
-  function affCell(aff) {
+  /* affinity cell: top pairing partner front and center with its attach rate,
+   * rest as footnote. attach = P(partner | this style's baskets). */
+  function affCell(aff, style) {
     if (!aff || !aff.length) return `<span class="faint">—</span>`;
     const [top, ...rest] = aff;
-    return `<div class="aff-top"><span class="afftag">affinity</span>Pairs with <b>${esc(top.other)}</b> · ${top.n} baskets</div>` +
-      (rest.length ? `<div class="small faint">also ${rest.map(a => `${esc(a.other)} (${a.n})`).join(" · ")}</div>` : "");
+    const pct = top.attach != null ? ` · ${Math.round(top.attach * 100)}% of ${esc(style)} baskets include it` : "";
+    const foot = a => `${esc(a.other)} (${a.n}${a.attach != null ? `, ${Math.round(a.attach * 100)}%` : ""})`;
+    return `<div class="aff-top"><span class="afftag">affinity</span>Pairs with <b>${esc(top.other)}</b> · ${top.n} baskets${pct}</div>` +
+      (rest.length ? `<div class="small faint">also ${rest.map(foot).join(" · ")}</div>` : "");
   }
 
   /* timeline strip: makes "months in store" unmissable — every date derives from it */
@@ -721,13 +917,17 @@ const Plan = (() => {
     const pairSeen = new Set(), pairList = [];
     rows.forEach(r => (r.affinity || []).forEach(a => {
       const k = [r.style, a.other].sort().join("");
-      if (!pairSeen.has(k)) { pairSeen.add(k); pairList.push({ a: r.style, b: a.other, n: a.n }); }
+      if (!pairSeen.has(k)) { pairSeen.add(k); pairList.push({ a: r.style, b: a.other, n: a.n, attach: a.attach }); }
     }));
     pairList.sort((x, y) => y.n - x.n);
     const topPairs = pairList.slice(0, 3);
     if (topPairs.length) {
       html += `<div class="aff-lede">Affinity-seeded draft — strongest pairs in this colorway: ` +
-        topPairs.map(p => `<b>${esc(p.a)} + ${esc(p.b)}</b> (${p.n} baskets)`).join(" · ") + `</div>`;
+        topPairs.map(p => `<b>${esc(p.a)} + ${esc(p.b)}</b> (${p.n} baskets` +
+          (p.attach != null ? `, ${Math.round(p.attach * 100)}% attach` : "") + `)`).join(" · ") +
+        (topPairs.some(p => p.attach != null)
+          ? ` <span class="faint small">— attach = share of the first style's baskets that also include the partner</span>` : "") +
+        `</div>`;
     }
     } // end if (!useWip)
     ["tops", "bottoms", "maillots"].forEach(type => {
@@ -737,9 +937,9 @@ const Plan = (() => {
       html += `<div class="alloc-sec">${type} · ${fmt(alloc)} allocated / ${fmt(targets[type])} ratio target</div>
       <table><tr><th>Style</th><th>Type</th><th class="num">Units</th><th>Affinity signal</th><th></th></tr>
       ${trs.map(r => `<tr>
-        <td>${esc(r.style)}${r.wip ? `<div class="small faint">${fmt(r.received)} received + ${fmt(r.on_order)} on order · PO ${esc(Object.keys(r.pos || {}).join(", "))}</div>` : ""}</td><td class="muted small">${esc(r.type)}</td>
-        <td class="num">${unitField(r.oid, r.units, 'style="width:84px;text-align:right"')}</td>
-        <td>${affCell(r.affinity)}</td>
+        <td>${esc(r.style)}${r.wip ? `<div class="small faint">${fmt(r.received)} received + ${fmt(r.on_order)} on order · PO ${esc(Object.keys(r.pos || {}).join(", "))}</div>` : ""}<div><button class="linkbtn sm sizes-toggle" data-style="${esc(r.style)}">sizes ▸</button></div><div class="sizedetail" hidden></div></td><td class="muted small">${esc(r.type)}</td>
+        <td class="num">${unitField(r.oid, r.units, 'style="width:84px;text-align:right"')}<div class="covflag" data-covstyle="${esc(r.style)}" data-covoid="${esc(r.oid)}">${coverageFlag(r.style, valOf(r))}</div></td>
+        <td>${affCell(r.affinity, r.style)}</td>
         <td><button class="linkbtn" data-rm="${esc(r.oid)}" title="Remove style">×</button></td></tr>`).join("")}
       </table>`;
     });
@@ -747,6 +947,7 @@ const Plan = (() => {
     host.innerHTML = html;
 
     bindOverrides(host); // no refreshDerived inside #ls-output (guard in data.js)
+    bindSizeToggles(host);
     const wipPullBtn = $("#wip-pull", host);
     if (wipPullBtn) wipPullBtn.addEventListener("click", () => {
       const sheet = wipLinesheet(wipMatch.norm).map(s => ({
@@ -765,6 +966,11 @@ const Plan = (() => {
       const alloc = rows.reduce((s, r) => s + valOf(r), 0);
       setAllocNote(tm, f, tierUnits, stFrac, alloc, isRecut, buyUnits, scope,
                    useWip ? wipMatch.display : null);
+      // keep cutting-viability flags live as units are typed
+      $$(".covflag", host).forEach(sp => {
+        const inp = host.querySelector('input[data-override="' + sp.dataset.covoid + '"]');
+        sp.innerHTML = coverageFlag(sp.dataset.covstyle, inp ? (+inp.value || 0) : 0);
+      });
     };
     $$("input[data-override]", host).forEach(inp => inp.addEventListener("input", recount));
     $$("button[data-rm]", host).forEach(b => b.addEventListener("click", () => {
@@ -980,7 +1186,7 @@ const Plan = (() => {
     });
 
     const colorExcluded = new Set([...(DATA.meta.pull_list_colors || []), ...(DATA.meta.dead_colors || [])].map(normKey));
-    const storeExcluded = new Set([...(DATA.meta.excluded_sample_locations || []), "Bridgehampton"].map(normKey));
+    const stockSet = new Set(ACTIVE_STOCK_STORES.map(normKey));
     const onHand = {};
     (DATA.inventory || []).forEach(r => {
       if (colorExcluded.has(normKey(r.c))) return;
@@ -988,7 +1194,7 @@ const Plan = (() => {
       if (!labelOf[nk]) labelOf[nk] = String(r.s || "").trim();
       let q = 0;
       Object.entries(r.st || {}).forEach(([store, qty]) => {
-        if (!storeExcluded.has(normKey(store))) q += (+qty || 0);
+        if (stockSet.has(normKey(store))) q += (+qty || 0);
       });
       onHand[nk] = (onHand[nk] || 0) + q;
     });
@@ -1032,15 +1238,16 @@ const Plan = (() => {
       <div style="max-height:520px;overflow:auto"><table id="cov-table">
       <tr><th>Style</th><th class="num">Need</th><th class="num">On hand</th><th class="num">Planned</th><th class="num">Net gap</th><th>Status</th></tr>
       ${rows.map(r => `<tr data-s="${esc(r.label.toLowerCase())}">
-        <td><b>${esc(r.label)}</b></td>
+        <td><b>${esc(r.label)}</b>${r.netGap > 0 ? ` <button class="linkbtn sm sizes-toggle" data-style="${esc(r.label)}" data-sizes-units="${r.netGap}">sizes ▸</button><div class="sizedetail" hidden></div>` : ""}</td>
         <td class="num">${r.need === null ? "—" : fmt(r.need)}</td>
         <td class="num">${fmt(r.oh)}</td>
         <td class="num">${fmt(r.pl)}</td>
-        <td class="num">${r.netGap === null ? "—" : (r.netGap > 0 ? "+" : "") + fmt(r.netGap)}</td>
+        <td class="num">${r.netGap === null ? "—" : (r.netGap > 0 ? "+" : "") + fmt(r.netGap)}${r.netGap > 0 ? `<div class="covflag">${coverageFlag(r.label, r.netGap)}</div>` : ""}</td>
         <td>${r.status}</td></tr>`).join("")}
       </table></div>
-      <p class="hint">${rows.length} styles · on hand nets out sample-sale colors/locations and Bridgehampton.</p>`;
+      <p class="hint">${rows.length} styles · on hand sums the 6 stock-holding stores only (Wooster, Madison, Marin, Montecito, Los Angeles, San Francisco) and nets out sample-sale colors.</p>`;
     root.appendChild(el);
+    bindSizeToggles(el);
     $("#cov-q", el).addEventListener("input", e => {
       const q = e.target.value.toLowerCase();
       $$("#cov-table tr[data-s]", el).forEach(tr => {
@@ -1211,5 +1418,7 @@ const Plan = (() => {
   }
 
   return { render, dropMath, dropCalc, tierMath, downloadCSV, cwNameKey, cwStFrac, cwMonths,
-           cwSellOut, cwExpected, cwBuyUnitsEntry, slotBuyUnits };
+           cwSellOut, cwExpected, cwBuyUnitsEntry, slotBuyUnits, styleTypeGuess,
+           ACTIVE_STOCK_STORES, activeStoreList, pairAttach, buildDraft, topStylesByType, affCell,
+           correctByAttach };
 })();

@@ -25,7 +25,7 @@ async function boot() {
   }
   $("#data-note").textContent =
     `Swim demand anchored to ${DATA.demand.annual.toLocaleString()} units sold in 2026 · ` +
-    `${DATA.colors.length} colors · ${DATA.meta.stores.length} stores`;
+    `${DATA.colors.length} colors · ${(typeof Plan !== "undefined" && Plan.ACTIVE_STOCK_STORES ? Plan.ACTIVE_STOCK_STORES.length : DATA.meta.stores.length)} stores`;
   const snap = $("#snapshot-note");
   if (snap) snap.textContent = DATA.meta.inventory_snapshot || "";
   $$("#tabs button").forEach(b => b.addEventListener("click", () => {

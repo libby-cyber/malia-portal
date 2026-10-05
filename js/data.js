@@ -2,7 +2,7 @@
 const DATA = {
   meta: null, colors: [], inventory: [], demand: null,
   affinity: null, black: [], styleVelocity: {}, alerts: [], transfers: [],
-  wip: null
+  wip: null, sizeCurves: {}
 };
 
 async function loadData() {
@@ -34,6 +34,14 @@ async function loadData() {
       if (!Array.isArray(DATA.wip.rows)) DATA.wip = { rows: [] };
     }
   } catch (e) { /* leave DATA.wip null */ }
+  // Size selling curves are optional: size explosion falls back to WIP/inventory.
+  try {
+    const r = await fetch("data/size_curves.json");
+    if (r.ok) {
+      const sc = await r.json();
+      if (sc && typeof sc === "object") DATA.sizeCurves = sc;
+    }
+  } catch (e) { /* leave DATA.sizeCurves {} */ }
   return DATA;
 }
 

@@ -14,11 +14,25 @@ const Black = (() => {
     return wks ? units / wks : 0;
   }
 
+  /* 6-store model: only Wooster/Madison/Marin/Montecito/LA/SF count as stock.
+   * Studio (negative units) and Brentwood are excluded; totals recomputed. */
+  const SIX = ["Wooster", "Madison", "Marin", "Montecito", "Los Angeles", "San Francisco"];
+  function sixStores(e) {
+    const out = {};
+    Object.entries(e.stores || {}).forEach(([s, q]) => {
+      if (SIX.includes(s)) out[s] = q;
+    });
+    return out;
+  }
+
   function computeRows() {
     const horizonMo = Store.get("blk_horizon_mo", 3);
     const targetCoverWks = Store.get("blk_target_cover_wks", 8);
     const reorderPtWks = Store.get("blk_reorder_pt_wks", 4);
-    return DATA.black.map(e => {
+    return DATA.black.map(e0 => {
+      const stores = sixStores(e0);
+      const total = Object.values(stores).reduce((a, b) => a + (+b || 0), 0);
+      const e = { ...e0, stores, total };
       const vel = yoyVelocity(e, horizonMo);
       const cover = vel > 0 ? e.total / vel : (e.total > 0 ? Infinity : 0);
       let status, rec = 0;
