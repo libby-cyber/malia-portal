@@ -496,16 +496,19 @@ const Plan = (() => {
   function affinityFor(style) {
     const out = [];
     const tSelf = styleTypeGuess(style);
+    // Affinity = set completion = tops<->bottoms ONLY.
     // Maillots are one piece: no pairing signal is meaningful for them (two
-    // maillots in one basket isn't set completion). Surface nothing.
-    if (tSelf === "maillots") return out;
+    // maillots in one basket isn't set completion). Same-type pairs
+    // (top<->top, bottom<->bottom) are also not set completion. Surface nothing
+    // for those.
+    if (tSelf !== "tops" && tSelf !== "bottoms") return out;
+    const want = tSelf === "tops" ? "bottoms" : "tops";
     (DATA.affinity.pairs || []).forEach(p => {
       let other = null, attach = null;
       if (p.a === style) { other = p.b; attach = p.attach_ab; }   // P(other | style) = P(b | a)
       else if (p.b === style) { other = p.a; attach = p.attach_ba; } // P(other | style) = P(a | b)
       if (other === null) return;
-      const tOther = styleTypeGuess(other);
-      if (tOther === "maillots") return; // never pair anything with a maillot
+      if (styleTypeGuess(other) !== want) return; // cross-type only
       out.push({ other, n: p.n, attach: attach != null ? +attach : null });
     });
     return out.sort((x, y) => y.n - x.n).slice(0, 5);
