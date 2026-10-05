@@ -472,15 +472,16 @@ const Plan = (() => {
   function affinityFor(style) {
     const out = [];
     const tSelf = styleTypeGuess(style);
+    // Maillots are one piece: no pairing signal is meaningful for them (two
+    // maillots in one basket isn't set completion). Surface nothing.
+    if (tSelf === "maillots") return out;
     (DATA.affinity.pairs || []).forEach(p => {
       let other = null, attach = null;
       if (p.a === style) { other = p.b; attach = p.attach_ab; }   // P(other | style) = P(b | a)
       else if (p.b === style) { other = p.a; attach = p.attach_ba; } // P(other | style) = P(a | b)
       if (other === null) return;
-      // Maillots are their own thing: a pair involving a maillot only surfaces
-      // when BOTH sides are maillots. Tops<->bottoms logic is unchanged.
       const tOther = styleTypeGuess(other);
-      if ((tSelf === "maillots" || tOther === "maillots") && !(tSelf === "maillots" && tOther === "maillots")) return;
+      if (tOther === "maillots") return; // never pair anything with a maillot
       out.push({ other, n: p.n, attach: attach != null ? +attach : null });
     });
     return out.sort((x, y) => y.n - x.n).slice(0, 5);
@@ -667,7 +668,7 @@ const Plan = (() => {
     // rates (auto-draft only — typed overrides always win at render via valOf).
     correctByAttach(groups, "bottoms", "tops");
     correctByAttach(groups, "tops", "bottoms");
-    correctByAttach(groups, "maillots", "maillots"); // no-op: no maillot<->maillot pairs in data
+    // Maillots: one piece, no pairing signal — velocity allocation only, no attach correction.
     const draft = [];
     ["tops", "bottoms", "maillots"].forEach(type => {
       const g = groups[type];
@@ -676,6 +677,14 @@ const Plan = (() => {
     });
     return draft;
   }
+  /* Recut hole analysis — grounded in actual cut history (user rule: never
+   * recommend "restocking" a style+color that was never cut).
+   * - If the color matches WIP: "Original cut" = received units per style from
+   *   the WIP linesheet; hole = max(0, received − available − on_order). Only
+   *   styles actually cut in this color appear.
+   * - If no WIP match: falls back to the generic velocity draft, labeled
+   *   "Suggested (no cut history)" — new-cut suggestions, not restocks.
+   * Urgent list prefers stockout alerts in the recut color, else global top. */
   function computeHoles(colorName, tierUnits, tp, bp, mp, rows) {
     const avail = {};
     const stockSet = new Set(ACTIVE_STOCK_STORES.map(s => String(s).toLowerCase().trim()));
@@ -684,18 +693,37 @@ const Plan = (() => {
       Object.entries(r.st || {}).forEach(([store, qty]) => {
         if (stockSet.has(String(store).toLowerCase().trim())) q += (+qty || 0);
       });
-      avail[r.s] = (avail[r.s] || 0) + q;
+      const sk = normColor(r.s);
+      avail[sk] = (avail[sk] || 0) + q;
     });
+    const colorNorm = normColor(colorName);
+    let urgentPool = DATA.alerts.filter(a => a.status === "stockout_demand" && normColor(a.color) === colorNorm);
+    const urgentInColor = urgentPool.length > 0;
+    if (!urgentInColor) urgentPool = DATA.alerts.filter(a => a.status === "stockout_demand");
+    const urgent = urgentPool.slice(0, 8)
+      .map(a => `${a.style} (${a.color}, size ${a.size})`);
+    const wipMatch = matchWipColor(colorName);
+    const sheet = wipMatch ? wipLinesheet(wipMatch.norm) : [];
+    if (sheet.length) {
+      let total = 0;
+      const perStyle = sheet.map(w => {
+        const a = avail[normColor(w.style)] || 0;
+        const cut = w.received || 0, oo = w.on_order || 0;
+        const hole = Math.max(0, cut - a - oo);
+        total += hole;
+        return { style: w.style, cut, onOrder: oo, avail: a, hole };
+      });
+      return { total, perStyle, urgent, urgentInColor, wipBased: true };
+    }
     const draft = buildDraft(tierUnits, tp, bp, mp);
     let total = 0;
     const perStyle = draft.map(d => {
-      const hole = Math.max(0, d.units - (avail[d.style] || 0));
+      const a = avail[normColor(d.style)] || 0;
+      const hole = Math.max(0, d.units - a);
       total += hole;
-      return { style: d.style, planned: d.units, avail: avail[d.style] || 0, hole };
+      return { style: d.style, planned: d.units, avail: a, hole };
     });
-    const urgent = DATA.alerts.filter(a => a.status === "stockout_demand").slice(0, 8)
-      .map(a => `${a.style} (${a.color}, size ${a.size})`);
-    return { total, perStyle, urgent };
+    return { total, perStyle, urgent, urgentInColor, wipBased: false };
   }
 
   let _lastDraft = null;
@@ -889,11 +917,12 @@ const Plan = (() => {
     if (isRecut) {
       const holeExp = cwExpected(buyUnits, stFrac);
       html += `<div class="recutflag">RECUT — "${esc(rawName)}" exists in stock. Hole target ${fmt(holeTarget)}u = buy ${fmt(buyUnits)}u → ${fmt(holeExp.sales)} expected sales @ ${Math.round(stFrac * 100)}%.</div>
-      <details class="hole" open><summary>Hole analysis (planned vs available)</summary><div class="body">
-      <table class="holetable"><tr><th>Style</th><th class="num">Planned</th><th class="num">Available</th><th class="num">Hole</th></tr>
-      ${recutHoles.perStyle.map(p => `<tr><td>${esc(p.style)}</td><td class="num">${fmt(p.planned)}</td><td class="num">${fmt(p.avail)}</td><td class="num"><b>${fmt(p.hole)}</b></td></tr>`).join("")}
+      <details class="hole" open><summary>Hole analysis (${recutHoles.wipBased ? "original cut" : "suggested"} vs available)</summary><div class="body">
+      ${recutHoles.wipBased ? "" : `<p class="small faint" style="margin:0 0 8px">No cut history found for this color — these are new-cut suggestions, not restocks.</p>`}
+      <table class="holetable"><tr><th>Style</th>${recutHoles.wipBased ? `<th class="num">Original cut</th><th class="num">On order</th>` : `<th class="num">Suggested (no cut history)</th>`}<th class="num">Available</th><th class="num">Hole</th></tr>
+      ${recutHoles.perStyle.map(p => `<tr><td>${esc(p.style)}</td>${recutHoles.wipBased ? `<td class="num">${fmt(p.cut)}</td><td class="num">${fmt(p.onOrder)}</td>` : `<td class="num">${fmt(p.planned)}</td>`}<td class="num">${fmt(p.avail)}</td><td class="num"><b>${fmt(p.hole)}</b></td></tr>`).join("")}
       </table>
-      ${recutHoles.urgent.length ? `<p class="small" style="margin-top:10px"><b>Also urgent elsewhere:</b> ${recutHoles.urgent.slice(0, 5).map(esc).join("; ")}</p>` : ""}
+      ${recutHoles.urgent.length ? `<p class="small" style="margin-top:10px"><b>${recutHoles.urgentInColor ? "Also urgent in this color:" : "Also urgent elsewhere:"}</b> ${recutHoles.urgent.slice(0, 5).map(esc).join("; ")}</p>` : ""}
       </div></details>`;
     }
     // WIP linesheet pull banner (coexists with recut flag — both are shown when both apply)
@@ -1420,5 +1449,5 @@ const Plan = (() => {
   return { render, dropMath, dropCalc, tierMath, downloadCSV, cwNameKey, cwStFrac, cwMonths,
            cwSellOut, cwExpected, cwBuyUnitsEntry, slotBuyUnits, styleTypeGuess,
            ACTIVE_STOCK_STORES, activeStoreList, pairAttach, buildDraft, topStylesByType, affCell,
-           correctByAttach };
+           correctByAttach, computeHoles };
 })();
