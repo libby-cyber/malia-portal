@@ -1,0 +1,18 @@
+{
+ "monthly_2026": [
+  240,
+  285,
+  387,
+  347,
+  561,
+  739,
+  733,
+  507,
+  140,
+  285,
+  341,
+  274
+ ],
+ "annual": 4839,
+ "note": "2026 monthly shape from transaction data Jan-Sep; Oct-Dec estimated from 2024/2025 shares; scaled to 4,839 (Profile Swim Colors 2026 sold)"
+}

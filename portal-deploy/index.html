@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Malia Mills — Production Planning Portal</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div>
+    <h1>Production Planning Portal</h1>
+    <p class="sub">Malia Mills · swim planning · inventory snapshot Oct 5, 2026</p>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button data-tab="plan" class="active">Seasonal plan</button>
+    <button data-tab="black">Black replenishment</button>
+    <button data-tab="fix">Fix inventory now</button>
+    <button data-tab="calendar">Calendar</button>
+  </nav>
+</header>
+
+<main>
+  <section id="tab-plan" class="tabpane active"></section>
+  <section id="tab-black" class="tabpane"></section>
+  <section id="tab-fix" class="tabpane"></section>
+  <section id="tab-calendar" class="tabpane"></section>
+</main>
+
+<footer>
+  <p>Sample-sale colors &amp; locations excluded everywhere · Web/Trunk = demand only · Bridgehampton closed ·
+  <span id="data-note"></span></p>
+</footer>
+
+<script src="js/store.js"></script>
+<script src="js/data.js"></script>
+<script src="js/plan.js"></script>
+<script src="js/black.js"></script>
+<script src="js/fixnow.js"></script>
+<script src="js/calendar.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

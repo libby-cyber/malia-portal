@@ -1,0 +1,2621 @@
+[
+ {
+  "color": "black",
+  "oh": 997,
+  "styles": [
+   "(hell yes) hipster bikini",
+   "(hell yes) men's shirting triangle top",
+   "alessandra maillot a/b/c",
+   "alex a/b/c/d top",
+   "alice",
+   "amanda tankini",
+   "anais a/b/c",
+   "anne top d/e/f",
+   "anouk a/b/c",
+   "anouk d/dd",
+   "bademeister",
+   "bambi",
+   "bangkok brief",
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "belinda",
+   "bond girl with tie",
+   "boob toob a/b/c",
+   "bralette b/c",
+   "bralette c/d/dd",
+   "calendar girl",
+   "callie",
+   "cami  c/d",
+   "caroline a/b",
+   "caroline d/dd",
+   "charlize d/dd/ddd",
+   "chloe a/b/c",
+   "chrysan a/b",
+   "chrysan b/c",
+   "city girl",
+   "claudia a/b",
+   "claudia c/d",
+   "coco",
+   "colette",
+   "d-cup chrysan",
+   "d-cup danceteria dd/e",
+   "d-cup girl next door",
+   "d-cup guinevere",
+   "damita a/b/c",
+   "damita d/dd"
+  ],
+  "black": true,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ]
+ },
+ {
+  "color": "gaia green",
+  "oh": 575,
+  "styles": [
+   "anouk a/b/c",
+   "anouk d/dd",
+   "bambi",
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "belinda",
+   "damita a/b/c",
+   "damita d/dd",
+   "dreamboat a/b/c",
+   "girl next door a/b/c",
+   "it's a cinch",
+   "juliette a/b/c",
+   "love knot",
+   "luna",
+   "riley c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ],
+  "sold_2026": 58,
+  "sell_through_2026": 0.763,
+  "sellable_2026": 76
+ },
+ {
+  "color": "roxy red",
+  "oh": 291,
+  "styles": [
+   "anouk a/b/c",
+   "anouk d/dd",
+   "beach party c/d/dd",
+   "damita a/b/c",
+   "damita d/dd",
+   "damsel a/b/c/d",
+   "danceteria a/b/c",
+   "it's a cinch",
+   "juliette a/b/c",
+   "juliette d/dd/e",
+   "lara a/b",
+   "lara c/d/dd",
+   "love knot",
+   "luna",
+   "lynley",
+   "tiona a/b/c/d",
+   "zadie short"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ],
+  "sold_2026": 374,
+  "sell_through_2026": 0.562,
+  "sellable_2026": 665
+ },
+ {
+  "color": "dido jacquard",
+  "oh": 270,
+  "styles": [
+   "bangkok brief",
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "gloria a/b/c/d",
+   "hailey a/b/c",
+   "lola a/b/c",
+   "lola c/d/dd",
+   "lots of love a/b/c",
+   "love knot",
+   "luna",
+   "mimi bottom",
+   "odessa a/b/c",
+   "pamela c/d/dd"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Novelty"
+  ],
+  "sold_2026": 219,
+  "sell_through_2026": 0.447,
+  "sellable_2026": 490
+ },
+ {
+  "color": "charlie green",
+  "oh": 198,
+  "styles": [
+   "bambi",
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "hailey a/b/c",
+   "it's a cinch",
+   "juliette a/b/c",
+   "luna",
+   "raquel a/b/c",
+   "raquel c/d",
+   "selene d/dd(e)/ddd(f)",
+   "summer of love",
+   "valencia a/b/c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ],
+  "sold_2026": 317,
+  "sell_through_2026": 0.614,
+  "sellable_2026": 516
+ },
+ {
+  "color": "onyx sun",
+  "oh": 178,
+  "styles": [
+   "bambi",
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "damita a/b/c",
+   "damsel a/b/c/d",
+   "it's a cinch",
+   "jennifer d/dd(e)/ddd(f)",
+   "lola a/b/c",
+   "lola c/d/dd",
+   "luna",
+   "raquel a/b/c",
+   "raquel c/d",
+   "summer of love",
+   "valencia a/b/c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Print"
+  ],
+  "sold_2026": 308,
+  "sell_through_2026": 0.555,
+  "sellable_2026": 555
+ },
+ {
+  "color": "monterrico blue",
+  "oh": 144,
+  "styles": [
+   "bambi",
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "dreamboat a/b/c",
+   "hannah",
+   "it's a cinch",
+   "jennifer d/dd(e)/ddd(f)",
+   "juliette a/b/c",
+   "lots of love a/b/c",
+   "love knot",
+   "lovely tankini a/b/c",
+   "luna",
+   "mariska dd/e",
+   "mini corset a/b/c",
+   "pamela c/d/dd",
+   "pearl a/b",
+   "riley c/d",
+   "tiona a/b/c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ],
+  "sold_2026": 278,
+  "sell_through_2026": 0.67,
+  "sellable_2026": 415
+ },
+ {
+  "color": "perissa platinum",
+  "oh": 116,
+  "styles": [
+   "bambi",
+   "country girl a/b/c",
+   "damita a/b/c",
+   "damita d/dd",
+   "damsel a/b/c/d",
+   "it's a cinch",
+   "juliette a/b/c",
+   "love knot",
+   "luna",
+   "paris d/dd",
+   "rosenda d/dd"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Shiny"
+  ],
+  "sold_2026": 228,
+  "sell_through_2026": 0.64,
+  "sellable_2026": 356
+ },
+ {
+  "color": "greystone green",
+  "oh": 47,
+  "styles": [
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "dreamboat a/b/c",
+   "mariska dd/e"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Shiny"
+  ],
+  "sold_2026": 53,
+  "sell_through_2026": 0.269,
+  "sellable_2026": 197
+ },
+ {
+  "color": "raphaela cotton",
+  "oh": 33,
+  "styles": [
+   "pucker calendar girl",
+   "smocked dionne a/b/c/d",
+   "woven carla",
+   "woven henrietta a/b/c",
+   "woven selene d/dd(e)/ddd(f)"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Novelty"
+  ],
+  "sold_2026": 114,
+  "sell_through_2026": 0.77,
+  "sellable_2026": 148
+ },
+ {
+  "color": "dahlia red",
+  "oh": 10,
+  "styles": [
+   "beach party c/d/dd",
+   "lizzo d/e/f",
+   "swim tie"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ]
+ },
+ {
+  "color": "suit and tie teal",
+  "oh": 8,
+  "styles": [
+   "bambi",
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "damita a/b/c",
+   "it's a cinch",
+   "lola a/b/c",
+   "lola c/d/dd",
+   "lots of love a/b/c",
+   "love knot",
+   "luna",
+   "pamela c/d/dd",
+   "valencia a/b/c/d"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": true,
+  "fabric": [
+   "Print"
+  ],
+  "sold_2026": 141,
+  "sell_through_2026": 3.811,
+  "sellable_2026": 37
+ },
+ {
+  "color": "night rider paisley",
+  "oh": 5,
+  "styles": [
+   "bambi",
+   "dionne a/b",
+   "it's a cinch",
+   "juliette a/b/c",
+   "love knot",
+   "low rider",
+   "pamela c/d/dd",
+   "valencia a/b/c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Print"
+  ]
+ },
+ {
+  "color": "la vie en rose",
+  "oh": 5,
+  "styles": [
+   "charlize d/dd/ddd",
+   "jolie d/e/f",
+   "low rider"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ]
+ },
+ {
+  "color": "bossa nova orange",
+  "oh": 4,
+  "styles": [
+   "bambi",
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "damita a/b/c",
+   "damita d/dd",
+   "hailey a/b/c",
+   "it's a cinch",
+   "juliette a/b/c",
+   "juliette d/dd/e",
+   "luna"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ],
+  "sold_2026": 0,
+  "sell_through_2026": 0.0,
+  "sellable_2026": 9
+ },
+ {
+  "color": "peridot green",
+  "oh": 4,
+  "styles": [
+   "bambi",
+   "damita a/b/c",
+   "damita d/dd",
+   "hailey a/b/c",
+   "luna"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "diamond pique",
+  "oh": 4,
+  "styles": [
+   "bambi",
+   "luna",
+   "vivienne dd/e"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "black/white gingham",
+  "oh": 4,
+  "styles": [
+   "girl's apron top",
+   "girl's it's a cinch"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "blue valentine",
+  "oh": 3,
+  "styles": [
+   "it's a cinch",
+   "juliette d/dd/e",
+   "low rider",
+   "paris d/dd",
+   "rio"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ]
+ },
+ {
+  "color": "morera magenta",
+  "oh": 2,
+  "styles": [
+   "bambi",
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "damita a/b/c",
+   "damita d/dd",
+   "double down short",
+   "dreamboat a/b/c",
+   "it's a cinch",
+   "juliette a/b/c",
+   "lots of love a/b/c",
+   "lovely tankini a/b/c",
+   "luna",
+   "mrs. mehta c/d/dd",
+   "valencia a/b/c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ]
+ },
+ {
+  "color": "violette femme",
+  "oh": 2,
+  "styles": [
+   "belinda",
+   "danceteria a/b/c",
+   "it's a cinch",
+   "juliette d/dd/e",
+   "luna",
+   "lynley",
+   "mini corset a/b/c",
+   "pearl a/b",
+   "perpetua b/c/d/e/f",
+   "riley c/d",
+   "tarale a/b/c/d",
+   "zadie short"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": true,
+  "fabric": [
+   "Novelty"
+  ],
+  "sold_2026": 355,
+  "sell_through_2026": 0.839,
+  "sellable_2026": 423
+ },
+ {
+  "color": "cypress green",
+  "oh": 2,
+  "styles": [
+   "beach party c/d/dd",
+   "it's a cinch",
+   "lots of love a/b/c",
+   "mariska dd/e",
+   "tatum",
+   "vivienne dd/e"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ]
+ },
+ {
+  "color": "go go gingham",
+  "oh": 2,
+  "styles": [
+   "alanis a/b/c/d",
+   "bangkok brief",
+   "lara a/b",
+   "lara c/d/dd",
+   "luna",
+   "mini corset a/b/c",
+   "tatum"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "toulouse floral stripe",
+  "oh": 2,
+  "styles": [
+   "it's a cinch",
+   "low rider"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "burlesque",
+  "oh": 2,
+  "styles": [
+   "girl's apron top",
+   "girl's it's a cinch"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "santorini blue",
+  "oh": 2,
+  "styles": [
+   "low rider",
+   "penelope a/b"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ]
+ },
+ {
+  "color": "rapture purple",
+  "oh": 1,
+  "styles": [
+   "bambi",
+   "belinda",
+   "it's a cinch",
+   "juliette a/b/c",
+   "luna",
+   "raquel a/b/c",
+   "raquel c/d",
+   "riley a/b",
+   "riley c/d",
+   "starlet a/b/c",
+   "starlet c/d/dd",
+   "summer of love"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": true,
+  "fabric": [
+   "Matte"
+  ],
+  "sold_2026": 247,
+  "sell_through_2026": 0.684,
+  "sellable_2026": 361
+ },
+ {
+  "color": "superbloom cotton",
+  "oh": 1,
+  "styles": [
+   "pucker calendar girl",
+   "smocked dionne a/b/c/d",
+   "woven country girl a/b/c",
+   "woven love knot",
+   "woven pamela"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": true,
+  "fabric": [
+   "Novelty"
+  ],
+  "sold_2026": 65,
+  "sell_through_2026": 0.714,
+  "sellable_2026": 91
+ },
+ {
+  "color": "andromeda blue",
+  "oh": 1,
+  "styles": [
+   "damsel a/b/c/d",
+   "dreamboat a/b/c"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": true,
+  "fabric": [
+   "Shiny"
+  ],
+  "sold_2026": 9,
+  "sell_through_2026": 0.391,
+  "sellable_2026": 23
+ },
+ {
+  "color": "twilight rose grey",
+  "oh": 1,
+  "styles": [
+   "danceteria a/b/c",
+   "it's a cinch"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ],
+  "sold_2026": 0,
+  "sell_through_2026": 0.0,
+  "sellable_2026": 7
+ },
+ {
+  "color": "ballad blue",
+  "oh": 1,
+  "styles": [
+   "anouk a/b/c",
+   "anouk d/dd",
+   "damita a/b/c",
+   "damita d/dd",
+   "double down short",
+   "it's a cinch",
+   "juliette d/dd/e",
+   "lara a/b",
+   "lara c/d/dd",
+   "love knot",
+   "luna"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": true,
+  "fabric": [
+   "Novelty"
+  ],
+  "sold_2026": 98,
+  "sell_through_2026": 0.488,
+  "sellable_2026": 201
+ },
+ {
+  "color": "midori green",
+  "oh": 1,
+  "styles": [
+   "bambi",
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "danceteria a/b/c",
+   "dreamboat a/b/c",
+   "it's a cinch",
+   "juliette a/b/c",
+   "juliette d/dd/e",
+   "love knot",
+   "luna",
+   "raquel a/b/c",
+   "riley a/b",
+   "riley c/d",
+   "valencia a/b/c/d"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": true,
+  "fabric": [
+   "Matte"
+  ],
+  "sold_2026": 228,
+  "sell_through_2026": 0.642,
+  "sellable_2026": 355
+ },
+ {
+  "color": "midnight bloom",
+  "oh": 1,
+  "styles": [
+   "alanis a/b/c/d",
+   "bangkok brief",
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "lola a/b/c",
+   "lola c/d/dd",
+   "love knot",
+   "luna",
+   "tarale a/b/c/d",
+   "valencia a/b/c/d"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": false,
+  "fabric": [
+   "Novelty"
+  ],
+  "sold_2026": 24,
+  "sell_through_2026": 0.32,
+  "sellable_2026": 75
+ },
+ {
+  "color": "blue bell cotton",
+  "oh": 1,
+  "styles": [
+   "pucker calendar girl",
+   "smocked dionne a/b/c/d",
+   "woven esther a/b/c",
+   "woven strawberry fields"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": false,
+  "fabric": [
+   "Novelty"
+  ],
+  "sold_2026": 0,
+  "sell_through_2026": 0.0,
+  "sellable_2026": 13
+ },
+ {
+  "color": "electropop gingham",
+  "oh": 1,
+  "styles": [
+   "bambi",
+   "hailey a/b/c",
+   "it's a cinch",
+   "itsy bitsy",
+   "jennifer d/dd(e)/ddd(f)",
+   "lara a/b",
+   "love knot",
+   "luna",
+   "mini corset a/b/c",
+   "riley a/b",
+   "riley c/d",
+   "tarale a/b/c/d"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "grey/white gingham",
+  "oh": 1,
+  "styles": [
+   "girl's apron top"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "jasper brown",
+  "oh": 1,
+  "styles": [
+   "hailey a/b/c",
+   "jennifer d/dd(e)/ddd(f)",
+   "temptress c/d/dd"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "wisteria purple",
+  "oh": 1,
+  "styles": [
+   "bambi",
+   "juliette d/dd/e",
+   "luna"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "toyama paisley",
+  "oh": 1,
+  "styles": [
+   "it's a cinch"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "nightfall navy",
+  "oh": 1,
+  "styles": [
+   "low rider"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "twice as nice",
+  "oh": 1,
+  "styles": [
+   "calendar girl",
+   "damita d/dd",
+   "tiona a/b/c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "malala medallion",
+  "oh": 1,
+  "styles": [
+   "pucker low rider"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "almost famous",
+  "oh": 1,
+  "styles": [
+   "d-cup danceteria dd/e",
+   "it's a cinch",
+   "low rider",
+   "pucker showgirl",
+   "raquel c/d",
+   "summer of love"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Novelty"
+  ]
+ },
+ {
+  "color": "baroque blue",
+  "oh": 1,
+  "styles": [
+   "lots of love a/b/c"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "chutes and ladders",
+  "oh": 1,
+  "styles": [
+   "girl's apron top"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "jade",
+  "oh": 1,
+  "styles": [
+   "jayne dd/e"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "navy",
+  "oh": 1,
+  "styles": [
+   "bademeister"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "out of the blue teal",
+  "oh": 0,
+  "styles": [
+   "bambi",
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "damita a/b/c",
+   "damita d/dd",
+   "damsel a/b/c/d",
+   "it's a cinch",
+   "juliette a/b/c",
+   "luna",
+   "lynley",
+   "marilyn d/dd",
+   "paris d/dd",
+   "tatum",
+   "valencia a/b/c/d"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": true,
+  "fabric": [
+   "Matte"
+  ],
+  "sold_2026": 208,
+  "sell_through_2026": 0.738,
+  "sellable_2026": 282
+ },
+ {
+  "color": "lucinda blue",
+  "oh": 0,
+  "styles": [
+   "bambi",
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "bralette b/c",
+   "bralette c/d/dd",
+   "double down short",
+   "it's a cinch",
+   "jennifer d/dd(e)/ddd(f)",
+   "juliette a/b/c",
+   "lots of love a/b/c",
+   "luna",
+   "mariska dd/e",
+   "maya",
+   "nambassa a/b/c",
+   "riley c/d"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": true,
+  "fabric": [
+   "Matte"
+  ],
+  "sold_2026": 471,
+  "sell_through_2026": 0.728,
+  "sellable_2026": 647
+ },
+ {
+  "color": "kinski python",
+  "oh": 0,
+  "styles": [
+   "bambi",
+   "beach party c/d/dd",
+   "danceteria a/b/c",
+   "dreamboat a/b/c",
+   "hailey a/b/c",
+   "it's a cinch",
+   "juliette a/b/c",
+   "lots of love a/b/c",
+   "love knot",
+   "luna",
+   "pamela c/d/dd",
+   "sashay skirt",
+   "selene d/dd(e)/ddd(f)",
+   "tatum"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": true,
+  "fabric": [
+   "Shiny"
+  ],
+  "sold_2026": 418,
+  "sell_through_2026": 0.812,
+  "sellable_2026": 515
+ },
+ {
+  "color": "revival",
+  "oh": 0,
+  "styles": [
+   "revival malia mills swim top - a/b/c",
+   "revival malia mills swim top - c/d/dd"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ],
+  "sold_2026": 0,
+  "sell_through_2026": 0.0,
+  "sellable_2026": 9
+ },
+ {
+  "color": "willoughby red",
+  "oh": 0,
+  "styles": [
+   "beach party c/d/dd",
+   "dreamboat a/b/c",
+   "hailey a/b/c",
+   "it's a cinch",
+   "luna",
+   "mariska dd/e",
+   "pearl a/b",
+   "vivienne dd/e"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": true,
+  "fabric": [
+   "Matte"
+  ],
+  "sold_2026": 71,
+  "sell_through_2026": 0.67,
+  "sellable_2026": 106
+ },
+ {
+  "color": "alta pop",
+  "oh": 0,
+  "styles": [
+   "bambi",
+   "danceteria a/b/c",
+   "girl next door a/b/c",
+   "gloria a/b/c/d",
+   "hailey a/b/c",
+   "it's a cinch",
+   "jennifer d/dd(e)/ddd(f)",
+   "kenza top d/e/f",
+   "lots of love a/b/c",
+   "love knot",
+   "luna",
+   "pamela c/d/dd",
+   "riley c/d"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": false,
+  "fabric": [
+   "Novelty"
+  ],
+  "sold_2026": 3,
+  "sell_through_2026": 0.042,
+  "sellable_2026": 71
+ },
+ {
+  "color": "rococo red",
+  "oh": 0,
+  "styles": [
+   "bambi",
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "it's a cinch",
+   "juliette a/b/c",
+   "luna",
+   "raquel a/b/c",
+   "raquel c/d",
+   "riley c/d",
+   "summer of love",
+   "temptress c/d/dd"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": true,
+  "fabric": [
+   "Novelty"
+  ],
+  "sold_2026": 147,
+  "sell_through_2026": 0.523,
+  "sellable_2026": 281
+ },
+ {
+  "color": "libretto lilac",
+  "oh": 0,
+  "styles": [
+   "bangkok brief",
+   "hannah",
+   "it's a cinch",
+   "juliette a/b/c",
+   "lots of love a/b/c",
+   "love knot",
+   "marianne shorts",
+   "pamela c/d/dd",
+   "riley a/b",
+   "riley c/d",
+   "valencia a/b/c/d"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": true,
+  "fabric": [
+   "Novelty"
+  ],
+  "sold_2026": 120,
+  "sell_through_2026": 0.354,
+  "sellable_2026": 339
+ },
+ {
+  "color": "first blush",
+  "oh": 0,
+  "styles": [
+   "bangkok brief",
+   "danceteria a/b/c",
+   "lots of love a/b/c",
+   "love knot",
+   "luna",
+   "pamela c/d/dd"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ],
+  "sold_2026": 0,
+  "sell_through_2026": 0.0,
+  "sellable_2026": 3
+ },
+ {
+  "color": "glam rock gingham",
+  "oh": 0,
+  "styles": [
+   "anouk a/b/c",
+   "anouk d/dd",
+   "bambi",
+   "danceteria a/b/c",
+   "it's a cinch",
+   "jennifer d/dd(e)/ddd(f)",
+   "juliette a/b/c",
+   "lara a/b",
+   "lara c/d/dd",
+   "love knot",
+   "luna",
+   "riley c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Novelty"
+  ]
+ },
+ {
+  "color": "hunter green multi",
+  "oh": 0,
+  "styles": [
+   "luna bottom tibi",
+   "riley a/b top tibi",
+   "riley c/d top tibi"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "cinnamon multi",
+  "oh": 0,
+  "styles": [
+   "luna bottom tibi",
+   "riley a/b top tibi",
+   "riley c/d top tibi"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "tangerine dream",
+  "oh": 0,
+  "styles": [
+   "jayne dd/e"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "donegal green",
+  "oh": 0,
+  "styles": [
+   "beach party c/d/dd",
+   "dionne a/b",
+   "dionne c/d",
+   "dreamboat a/b/c",
+   "it's a cinch",
+   "juliette a/b/c",
+   "luna",
+   "temptress c/d/dd",
+   "valencia a/b/c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Shiny"
+  ]
+ },
+ {
+  "color": "lantana orange",
+  "oh": 0,
+  "styles": [
+   "beach party c/d/dd",
+   "dreamboat a/b/c"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Shiny"
+  ]
+ },
+ {
+  "color": "lehua red",
+  "oh": 0,
+  "styles": [
+   "beach party c/d/dd",
+   "juliette a/b/c",
+   "paris d/dd"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "desert rose",
+  "oh": 0,
+  "styles": [
+   "bambi",
+   "damita a/b/c",
+   "damita d/dd",
+   "limbo",
+   "tiona a/b/c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Novelty"
+  ]
+ },
+ {
+  "color": "margaux purple",
+  "oh": 0,
+  "styles": [
+   "anouk d/dd",
+   "it's a cinch",
+   "juliette d/dd/e",
+   "luna"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "neptunite pique",
+  "oh": 0,
+  "styles": [
+   "boob toob a/b/c",
+   "damita d/dd",
+   "luna",
+   "riley a/b"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Novelty"
+  ]
+ },
+ {
+  "color": "agate green",
+  "oh": 0,
+  "styles": [
+   "dionne c/d",
+   "jayne dd/e"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "magda floral velvet",
+  "oh": 0,
+  "styles": [
+   "deauville a/b/c/d",
+   "riley a/b"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "sapphire blue",
+  "oh": 0,
+  "styles": [
+   "beach party a/b/c",
+   "tryst"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Shiny"
+  ]
+ },
+ {
+  "color": "vernazza floral",
+  "oh": 0,
+  "styles": [
+   "smocked dionne a/b/c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "aventurine green",
+  "oh": 0,
+  "styles": [
+   "beach party c/d/dd",
+   "d-cup danceteria dd/e",
+   "girl next door a/b/c",
+   "juliette a/b/c",
+   "starlet c/d/dd"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "disco blue pique",
+  "oh": 0,
+  "styles": [
+   "damita d/dd",
+   "riley c/d",
+   "thelma bottom"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Novelty"
+  ]
+ },
+ {
+  "color": "rhodonite red",
+  "oh": 0,
+  "styles": [
+   "beach party c/d/dd",
+   "it's a cinch",
+   "mrs. mehta c/d/dd"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "lila purple",
+  "oh": 0,
+  "styles": [
+   "hailey a/b/c",
+   "it's a cinch",
+   "juliette a/b/c",
+   "juliette d/dd/e",
+   "love knot",
+   "luna",
+   "lynley",
+   "mini corset a/b/c",
+   "riley a/b",
+   "riley c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ]
+ },
+ {
+  "color": "smoky citrine",
+  "oh": 0,
+  "styles": [
+   "beach party c/d/dd",
+   "damsel a/b/c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "atacama purple",
+  "oh": 0,
+  "styles": [
+   "raquel c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "dunloe purple",
+  "oh": 0,
+  "styles": [
+   "lots of love a/b/c"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "cheetah velvet",
+  "oh": 0,
+  "styles": [
+   "chrysan c/d",
+   "stunner"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "navy velvet",
+  "oh": 0,
+  "styles": [
+   "riley a/b"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "sapa valley green",
+  "oh": 0,
+  "styles": [
+   "beach party c/d/dd",
+   "paris d/dd"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ]
+ },
+ {
+  "color": "deep blue sea",
+  "oh": 0,
+  "styles": [
+   "mariska dd/e"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "moonlight drive jacquard",
+  "oh": 0,
+  "styles": [
+   "gloria a/b/c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Novelty"
+  ]
+ },
+ {
+  "color": "hot pink (sample)",
+  "oh": 0,
+  "styles": [
+   "emmanuelle a/b/c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "azul (sample)",
+  "oh": 0,
+  "styles": [
+   "emmanuelle a/b/c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "blue topaz",
+  "oh": 0,
+  "styles": [
+   "damita d/dd",
+   "double down short"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "nordic green",
+  "oh": 0,
+  "styles": [
+   "bralette c/d/dd",
+   "mariska dd/e"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "gold rush",
+  "oh": 0,
+  "styles": [
+   "damita d/dd"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "katarina jacquard",
+  "oh": 0,
+  "styles": [
+   "lara c/d/dd",
+   "love knot",
+   "low rider"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "spanish moss green",
+  "oh": 0,
+  "styles": [
+   "low rider"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "merlot stripe",
+  "oh": 0,
+  "styles": [
+   "(hell yes) men's shirting triangle top",
+   "(hell yes)men's shirting miss may",
+   "men's shirting miss may ug",
+   "men's shirting triangle top ug"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "rockstar purple",
+  "oh": 0,
+  "styles": [
+   "alyssa d/dd ug",
+   "bralette b/c ug",
+   "low rider ug"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "smoke on the water",
+  "oh": 0,
+  "styles": [
+   "bralette b/c ug",
+   "low rider ug"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "phoenician plum - test",
+  "oh": 0,
+  "styles": [
+   "anya d/dd",
+   "anya d/dd ug",
+   "d-cup danceteria dd/e",
+   "low rider",
+   "low rider ug",
+   "margot a/b/c",
+   "nambassa a/b/c",
+   "stunner"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "sakura pink",
+  "oh": 0,
+  "styles": [
+   "calendar girl ug",
+   "low rider ug"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "veruschka",
+  "oh": 0,
+  "styles": [
+   "limbo ug",
+   "low rider ug"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "n/a",
+  "oh": 0,
+  "styles": [
+   "the little red planet"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "test",
+  "oh": 0,
+  "styles": [
+   "pucker louisa c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "fabienne floral pique",
+  "oh": 0,
+  "styles": [
+   "limbo"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Novelty"
+  ]
+ },
+ {
+  "color": "angel fire orange",
+  "oh": 0,
+  "styles": [
+   "honey rider",
+   "juliette d/dd/e",
+   "love knot"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ]
+ },
+ {
+  "color": "green velvet",
+  "oh": 0,
+  "styles": [
+   "anya d/dd"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "mica",
+  "oh": 0,
+  "styles": [
+   "lynley"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "snapdragon red",
+  "oh": 0,
+  "styles": [
+   "anya d/dd"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "hokkaido",
+  "oh": 0,
+  "styles": [
+   "vamp d/dd"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "forest night",
+  "oh": 0,
+  "styles": [
+   "starlet c/d/dd"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "skyler blue",
+  "oh": 0,
+  "styles": [
+   "itsy bitsy",
+   "juliette a/b/c",
+   "juliette d/dd/e"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "the crown",
+  "oh": 0,
+  "styles": [
+   "chelsea a/b woven",
+   "soho summer woven"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "peach fuzz velvet",
+  "oh": 0,
+  "styles": [
+   "raquel c/d",
+   "summer of love"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "ghost ranch rust",
+  "oh": 0,
+  "styles": [
+   "juliette a/b/c"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "shiny black",
+  "oh": 0,
+  "styles": [
+   "hailey with heart"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "yayoi yellow",
+  "oh": 0,
+  "styles": [
+   "vamp d/dd"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "denim",
+  "oh": 0,
+  "styles": [
+   "girls got hips 25th",
+   "lara a/b"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "kooki red",
+  "oh": 0,
+  "styles": [
+   "pucker louisa a/b",
+   "vamp a/b/c"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ]
+ },
+ {
+  "color": "cosmic blue",
+  "oh": 0,
+  "styles": [
+   "juliette a/b/c",
+   "lots of love a/b/c",
+   "love knot",
+   "rio"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "mocha",
+  "oh": 0,
+  "styles": [
+   "love knot"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "bondi blue",
+  "oh": 0,
+  "styles": [
+   "danceteria a/b/c"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "stripe",
+  "oh": 0,
+  "styles": [
+   "heidi bottom",
+   "woven nadege a/b/c"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "prophecy blue",
+  "oh": 0,
+  "styles": [
+   "lots of love a/b/c",
+   "love knot",
+   "low rider",
+   "pamela c/d/dd"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "envy",
+  "oh": 0,
+  "styles": [
+   "penelope c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "rita red",
+  "oh": 0,
+  "styles": [
+   "love knot"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "dark and stormy blue",
+  "oh": 0,
+  "styles": [
+   "lots of love a/b/c",
+   "love knot",
+   "pucker louisa a/b",
+   "tryst"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ]
+ },
+ {
+  "color": "freedom rider",
+  "oh": 0,
+  "styles": [
+   "guinevere a/b/c"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "black swimcap",
+  "oh": 0,
+  "styles": [
+   "showgirl"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "glossy black",
+  "oh": 0,
+  "styles": [
+   "mini corset"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "baja blue",
+  "oh": 0,
+  "styles": [
+   "juliette a/b/c",
+   "love knot"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Shiny"
+  ]
+ },
+ {
+  "color": "light blue stripe",
+  "oh": 0,
+  "styles": [
+   "(hell yes) men's shirting triangle top",
+   "(hell yes)men's shirting miss may"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "black stripe",
+  "oh": 0,
+  "styles": [
+   "(hell yes) men's shirting triangle top",
+   "(hell yes)men's shirting miss may"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Novelty"
+  ]
+ },
+ {
+  "color": "blue skies at night",
+  "oh": 0,
+  "styles": [
+   "chloe a/b/c",
+   "love knot"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "funkytown",
+  "oh": 0,
+  "styles": [
+   "danceteria a/b/c",
+   "love knot",
+   "low rider",
+   "pamela c/d/dd"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "black velvet",
+  "oh": 0,
+  "styles": [
+   "pucker showgirl"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "red hills",
+  "oh": 0,
+  "styles": [
+   "danceteria a/b/c",
+   "love knot"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "crystal",
+  "oh": 0,
+  "styles": [
+   "just married it's a cinch"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "majesty",
+  "oh": 0,
+  "styles": [
+   "danceteria a/b/c",
+   "love knot"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Print"
+  ]
+ },
+ {
+  "color": "sequoia",
+  "oh": 0,
+  "styles": [
+   "limbo",
+   "love knot"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "leo brown",
+  "oh": -1,
+  "styles": [
+   "anouk a/b/c",
+   "anouk d/dd",
+   "bambi",
+   "hailey a/b/c",
+   "it's a cinch",
+   "juliette a/b/c",
+   "lots of love a/b/c",
+   "luna",
+   "mariska dd/e",
+   "pamela c/d/dd",
+   "raquel a/b/c",
+   "raquel c/d",
+   "summer of love",
+   "temptress c/d/dd",
+   "tiona a/b/c/d"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": true,
+  "fabric": [
+   "Shiny"
+  ],
+  "sold_2026": 249,
+  "sell_through_2026": 0.808,
+  "sellable_2026": 308
+ },
+ {
+  "color": "lanikai green",
+  "oh": -1,
+  "styles": [
+   "anouk a/b/c",
+   "anouk d/dd",
+   "bambi",
+   "beach party c/d/dd",
+   "damsel a/b/c/d",
+   "hailey a/b/c",
+   "it's a cinch",
+   "jennifer d/dd(e)/ddd(f)",
+   "juliette a/b/c",
+   "juliette d/dd/e",
+   "love knot",
+   "luna",
+   "marianne shorts",
+   "mrs. mehta c/d/dd",
+   "odette a/b",
+   "riley c/d"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ],
+  "sold_2026": 0,
+  "sell_through_2026": 0.0,
+  "sellable_2026": 6
+ },
+ {
+  "color": "carezza green",
+  "oh": -1,
+  "styles": [
+   "calendar girl",
+   "danceteria a/b/c",
+   "it's a cinch",
+   "juliette a/b/c",
+   "juliette d/dd/e",
+   "paris d/dd"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "heavy metal",
+  "oh": -1,
+  "styles": [
+   "rio"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Shiny"
+  ]
+ },
+ {
+  "color": "palo santo green",
+  "oh": -2,
+  "styles": [
+   "bambi",
+   "boob toob a/b/c",
+   "damita a/b/c",
+   "damita d/dd",
+   "double down short",
+   "hailey a/b/c",
+   "it's a cinch",
+   "itsy bitsy",
+   "jennifer d/dd(e)/ddd(f)",
+   "juliette a/b/c",
+   "luna",
+   "mrs. mehta c/d/dd",
+   "nambassa a/b/c",
+   "perpetua b/c/d/e/f"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": true,
+  "fabric": [
+   "Matte"
+  ],
+  "sold_2026": 177,
+  "sell_through_2026": 0.753,
+  "sellable_2026": 235
+ },
+ {
+  "color": "pomona orange",
+  "oh": -2,
+  "styles": [
+   "bangkok brief",
+   "beach party c/d/dd",
+   "it's a cinch",
+   "lots of love a/b/c",
+   "love knot",
+   "luna",
+   "mini corset a/b/c",
+   "mini corset c/d/dd",
+   "pamela c/d/dd",
+   "valencia a/b/c/d"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ]
+ },
+ {
+  "color": "dubrovnik blue",
+  "oh": -2,
+  "styles": [
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "calendar girl",
+   "callie",
+   "dreamboat a/b/c",
+   "hailey a/b/c",
+   "it's a cinch",
+   "jennifer d/dd(e)/ddd(f)",
+   "juliette a/b/c",
+   "luna",
+   "mariska dd/e",
+   "petra maillot",
+   "riley a/b",
+   "riley c/d",
+   "swim tie"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ]
+ },
+ {
+  "color": "sheena cheetah",
+  "oh": -3,
+  "styles": [
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "damita a/b/c",
+   "damita d/dd",
+   "damsel a/b/c/d",
+   "danceteria a/b/c",
+   "it's a cinch",
+   "jennifer d/dd(e)/ddd(f)",
+   "juliette a/b/c",
+   "lots of love a/b/c",
+   "love knot",
+   "luna",
+   "lynley",
+   "pamela c/d/dd",
+   "valencia a/b/c/d"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": false,
+  "fabric": [
+   "Print"
+  ],
+  "sold_2026": 0,
+  "sell_through_2026": 0,
+  "sellable_2026": 0
+ },
+ {
+  "color": "alba navy blue",
+  "oh": -10,
+  "styles": [
+   "anouk d/dd",
+   "beach party c/d/dd",
+   "bralette b/c",
+   "bralette c/d/dd",
+   "damita a/b/c",
+   "damita d/dd",
+   "damsel a/b/c/d",
+   "double down short",
+   "it's a cinch",
+   "juliette a/b/c",
+   "juliette d/dd/e",
+   "luna",
+   "lynley",
+   "raquel a/b/c",
+   "raquel c/d",
+   "starlet a/b/c",
+   "starlet c/d/dd",
+   "summer of love",
+   "tatum",
+   "valencia a/b/c/d"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ],
+  "sold_2026": 0,
+  "sell_through_2026": 0.0,
+  "sellable_2026": 3
+ },
+ {
+  "color": "linosa blue",
+  "oh": -18,
+  "styles": [
+   "bambi",
+   "beach party a/b/c",
+   "beach party c/d/dd",
+   "boob toob a/b/c",
+   "dionne a/b",
+   "dionne c/d",
+   "it's a cinch",
+   "juliette a/b/c",
+   "juliette d/dd/e",
+   "lovely tankini a/b/c",
+   "luna",
+   "temptress c/d/dd"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": false,
+  "fabric": [
+   "Matte"
+  ]
+ },
+ {
+  "color": "assorted",
+  "oh": -20,
+  "styles": [
+   "kids swim bottom",
+   "kids swim top"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "white",
+  "oh": -40,
+  "styles": [
+   "just married it's a cinch",
+   "just married low rider"
+  ],
+  "black": false,
+  "excluded": false,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "clara cotton",
+  "oh": -45,
+  "styles": [
+   "smocked dionne a/b/c/d"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": false,
+  "fabric": [
+   "Unclassified"
+  ]
+ },
+ {
+  "color": "cleo cotton",
+  "oh": -106,
+  "styles": [
+   "smocked dionne a/b/c/d",
+   "woven love knot",
+   "woven nadege a/b/c",
+   "woven pamela"
+  ],
+  "black": false,
+  "excluded": true,
+  "pull_list": false,
+  "fabric": [
+   "Novelty"
+  ],
+  "sold_2026": 4,
+  "sell_through_2026": 0,
+  "sellable_2026": 0
+ }
+]

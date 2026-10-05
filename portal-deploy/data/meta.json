@@ -1,0 +1,121 @@
+{
+ "generated": "2026-10-05",
+ "inventory_snapshot": "Oct 5 2026 10:41 AM ET (all_inventory_rfid.csv, 6,554 rows)",
+ "stores": [
+  "Studio",
+  "Madison",
+  "Lexington",
+  "Columbus",
+  "Mulberry",
+  "Brentwood",
+  "Marin",
+  "East Hampton",
+  "Sag Harbor",
+  "Montecito CM",
+  "Beverly Blvd",
+  "Houston",
+  "Wooster",
+  "San Francisco",
+  "Los Angeles",
+  "Montecito",
+  "MS-POPUP"
+ ],
+ "demand_only_locations": [
+  "Web",
+  "WebCali",
+  "Trunk Show",
+  "TrunkCali"
+ ],
+ "excluded_sample_locations": [
+  "SAMPLESALE",
+  "SSCALI"
+ ],
+ "pull_list_colors": [
+  "violette femme",
+  "kinski python",
+  "lucinda blue",
+  "libretto lilac",
+  "rococo red",
+  "ballad blue",
+  "superbloom cotton",
+  "midori green",
+  "willoughby red",
+  "out of the blue teal",
+  "palo santo green",
+  "rapture purple",
+  "suit and tie teal",
+  "leo brown",
+  "andromeda blue"
+ ],
+ "dead_colors": [
+  "sheena cheetah",
+  "alta pop",
+  "midnight bloom",
+  "twilight rose grey",
+  "bossa nova orange",
+  "blue bell cotton",
+  "electropop gingham",
+  "first blush",
+  "lanikai green",
+  "cleo cotton",
+  "clara cotton",
+  "alba navy blue",
+  "linosa blue"
+ ],
+ "defaults": {
+  "sell_through": 0.7,
+  "growth_pct": 0,
+  "fabric_lead_wks": 8,
+  "sewing_lead_wks": 6,
+  "transit_wks": 2,
+  "grade_a_units": 700,
+  "grade_a_months": 6,
+  "grade_b_units": 500,
+  "grade_b_months": 4,
+  "grade_c_units": 200,
+  "grade_c_months": 4,
+  "factory_cap_month": 1000,
+  "factory_cap_flag": 1500,
+  "tops_pct": 40,
+  "bottoms_pct": 40,
+  "maillots_pct": 20
+ },
+ "drops": [
+  {
+   "id": "dec",
+   "name": "December drop",
+   "in_store": "2026-12-01",
+   "window": [
+    "2026-12",
+    "2027-01",
+    "2027-02"
+   ],
+   "color_months": 4
+  },
+  {
+   "id": "spring",
+   "name": "Spring drop",
+   "in_store": "2027-03-01",
+   "window": [
+    "2027-03",
+    "2027-04",
+    "2027-05"
+   ],
+   "color_months": 4
+  },
+  {
+   "id": "summer",
+   "name": "Summer drop",
+   "in_store": "2027-05-01",
+   "window": [
+    "2027-06",
+    "2027-07",
+    "2027-08",
+    "2027-09",
+    "2027-10",
+    "2027-11"
+   ],
+   "color_months": 4
+  }
+ ]
+}
