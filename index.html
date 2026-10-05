@@ -8,23 +8,18 @@
 </head>
 <body>
 <header class="topbar">
-  <div>
-    <h1>Production Planning Portal</h1>
-    <p class="sub">Malia Mills · swim planning · inventory snapshot Oct 5, 2026</p>
-  </div>
-  <nav class="tabs" id="tabs">
+  <nav class="tabs" id="tabs" aria-label="Primary">
     <button data-tab="plan" class="active">Seasonal plan</button>
     <button data-tab="black">Black replenishment</button>
     <button data-tab="fix">Fix inventory now</button>
-    <button data-tab="calendar">Calendar</button>
   </nav>
+  <div class="topbar-note muted small" id="snapshot-note"></div>
 </header>
 
 <main>
   <section id="tab-plan" class="tabpane active"></section>
   <section id="tab-black" class="tabpane"></section>
   <section id="tab-fix" class="tabpane"></section>
-  <section id="tab-calendar" class="tabpane"></section>
 </main>
 
 <footer>

@@ -1,5 +1,6 @@
-/* plan.js — Tab 1: Seasonal plan (rotation calendar, drops, line sheet allocator, schedule tracker) */
+/* plan.js — Seasonal plan tab: header stats, sub-tabs (signals / tiers+line sheet / calendar) */
 const Plan = (() => {
+  /* ---------- drop math (same-months-last-year shaped demand) ---------- */
   function dropMath(drop, asm) {
     const winMonths = monthsBetween(drop.window[0], drop.window[drop.window.length - 1]);
     let demand = winMonths.reduce((s, ym) => s + templateDemand(ym), 0);
@@ -11,7 +12,6 @@ const Plan = (() => {
     const handoff = addDays(sellOut, -14);
     const fabricOrder = addWeeks(inStore, -(asm.fabric_lead_wks + asm.sewing_lead_wks + asm.transit_wks));
     const sewingLaunch = addWeeks(inStore, -(asm.sewing_lead_wks + asm.transit_wks));
-    // receipt ramp: spread buy over months ending at in-store month, within factory cap
     const ramp = buildRamp(Math.round(buy), asm, inStore);
     const overCap = ramp.some(r => r.qty > asm.factory_cap_flag);
     return { demand: Math.round(demand), buy: Math.round(buy), inStore, sellOut, handoff,
@@ -32,129 +32,341 @@ const Plan = (() => {
     return ramp;
   }
 
-  function assumptionsCard(root) {
+  /* manual buy override always wins */
+  function dropCalc(drop) {
     const asm = getAssumptions();
-    const d = DATA.meta.defaults;
-    const fields = [
-      ["sell_through", "Sell-through (plan rate)", 0.5, 0.95, 0.01, v => (v * 100).toFixed(0) + "%"],
-      ["growth_pct", "Growth %", -20, 50, 1, v => v + "%"],
-      ["fabric_lead_wks", "Fabric lead (wks)", 1, 20, 1, v => v],
-      ["sewing_lead_wks", "Sewing lead (wks)", 1, 20, 1, v => v],
-      ["transit_wks", "Transit (wks)", 0, 8, 1, v => v],
-      ["grade_a_units", "Grade A units/color", 100, 1500, 10, v => v],
-      ["grade_a_months", "Grade A months", 1, 12, 1, v => v],
-      ["grade_b_units", "Grade B units/color", 100, 1000, 10, v => v],
-      ["grade_b_months", "Grade B months", 1, 12, 1, v => v],
-      ["grade_c_units", "Grade C units/color", 50, 600, 10, v => v],
-      ["grade_c_months", "Grade C months", 1, 12, 1, v => v],
-      ["factory_cap_month", "Factory cap (units/mo)", 200, 3000, 50, v => v],
-      ["factory_cap_flag", "Flag above (units/mo)", 500, 4000, 50, v => v],
-      ["tops_pct", "Tops %", 0, 100, 1, v => v + "%"],
-      ["bottoms_pct", "Bottoms %", 0, 100, 1, v => v + "%"],
-      ["maillots_pct", "Maillots %", 0, 100, 1, v => v + "%"]
-    ];
-    const el = document.createElement("div");
-    el.className = "card";
-    el.innerHTML = `<h2>Planning assumptions</h2>
-      <p class="muted small">Every input recalculates immediately and is saved. Typed unit overrides always win over computed values.</p>
-      <div class="grid c4">${fields.map(([k, label, min, max, step, f]) => `
-        <label class="f">${esc(label)}
-          <input type="number" data-asm="${k}" min="${min}" max="${max}" step="${step}" value="${asm[k]}">
-        </label>`).join("")}</div>
-      <p style="margin-top:10px"><button class="btn ghost sm" id="asm-reset">Reset to defaults</button></p>`;
-    root.appendChild(el);
-    $$("input[data-asm]", el).forEach(inp => {
-      inp.addEventListener("change", () => {
-        setAssumption(inp.dataset.asm, Number(inp.value));
-        render();
-      });
-    });
-    $("#asm-reset", el).addEventListener("click", () => {
-      Object.keys(d).forEach(k => Store.remove("asm_" + k));
-      render();
-    });
+    const m = dropMath(drop, asm);
+    const ovr = Store.get("ovr_buy_" + drop.id, null);
+    if (ovr !== null && ovr !== "" && ovr !== undefined) {
+      m.buy = Math.round(Number(ovr));
+      m.ramp = buildRamp(m.buy, asm, m.inStore);
+      m.overCap = m.ramp.some(r => r.qty > asm.factory_cap_flag);
+    }
+    return m;
   }
 
-  function dropCards(root) {
-    const asm = getAssumptions();
-    const el = document.createElement("div");
-    el.innerHTML = `<div class="card"><h2>Color rotation plan</h2>
-      <p class="muted small">Three mutually exclusive drops. Annual buy = sum of drop buys.
-      Demand anchored to 4,839 swim units sold in 2026 (full assortment), shaped by the real seasonal curve — sharp September cliff included.</p></div>`;
-    let annualBuy = 0, annualDemand = 0;
-    const wrap = document.createElement("div");
-    DATA.meta.drops.forEach(drop => {
-      const m = dropMath(drop, asm);
-      // manual buy override feeds the ramp + annual total (stored value always wins)
-      const ovrBuy = Store.get("ovr_buy_" + drop.id, null);
-      if (ovrBuy !== null && ovrBuy !== "" && ovrBuy !== undefined) {
-        m.buy = Number(ovrBuy);
-        m.ramp = buildRamp(m.buy, asm, m.inStore);
-        m.overCap = m.ramp.some(r => r.qty > asm.factory_cap_flag);
+  /* ---------- fabric tier model ---------- */
+  const TIER_DEFAULTS = { fabric_category: "Matte", grade_a_colors: 1, grade_b_colors: 1 };
+  function getTier() {
+    const t = {};
+    for (const k of Object.keys(TIER_DEFAULTS)) t[k] = Store.get("asm_" + k, TIER_DEFAULTS[k]);
+    return t;
+  }
+  function setTier(k, v) { Store.set("asm_" + k, v); }
+
+  let _shares = null;
+  function fabricShares() {
+    if (_shares) return _shares;
+    const cmap = {};
+    DATA.colors.forEach(c => { cmap[c.color] = (c.fabric && c.fabric[0]) || "Matte"; });
+    const totals = { Matte: 0, Shiny: 0, Novelty: 0, Print: 0 };
+    for (const [key, hist] of Object.entries(DATA.styleVelocity)) {
+      const color = key.split("|").slice(1).join("|");
+      const fab = cmap[color] || "Matte";
+      let s = 0;
+      for (const [ym, v] of Object.entries(hist)) if (ym.indexOf("2026") === 0) s += v;
+      if (totals[fab] === undefined) totals.Matte += s; else totals[fab] += s;
+    }
+    const tot = Object.values(totals).reduce((a, b) => a + b, 0) || 1;
+    _shares = {};
+    for (const k of Object.keys(totals)) _shares[k] = totals[k] / tot;
+    return _shares;
+  }
+
+  function tierMath() {
+    const asm = getAssumptions(), t = getTier();
+    const calcs = DATA.meta.drops.map(drop => ({ drop, m: dropCalc(drop) }));
+    const annualBuy = calcs.reduce((s, c) => s + c.m.buy, 0);
+    const demand12 = calcs.reduce((s, c) => s + c.m.demand, 0);
+    const shares = fabricShares();
+    const cat = t.fabric_category;
+    const share = shares[cat] || 0;
+    const need = Math.round(annualBuy * share);
+    const aU = +asm.grade_a_units || 0, bU = +asm.grade_b_units || 0, cU = +asm.grade_c_units || 0;
+    const aN = Math.max(0, Math.round(+t.grade_a_colors || 0));
+    const bN = Math.max(0, Math.round(+t.grade_b_colors || 0));
+    const rem = need - aU * aN - bU * bN;
+    const cN = (rem > 0 && cU > 0) ? Math.ceil(rem / cU) : 0;
+    const capacity = aU * aN + bU * bN + cU * cN;
+    const slots = aN + bN + cN;
+    const blackReorder = Black.computeRows().filter(r => r.status === "reorder").length;
+    const sellouts = DATA.alerts.filter(a => a.status === "stockout_demand").length;
+    return { asm, t, calcs, annualBuy, demand12, cat, share, need,
+             aU, bU, cU, aN, bN, cN, capacity, slots, blackReorder, sellouts };
+  }
+
+  function buildSlots(tm) {
+    const slots = [];
+    let n = 0;
+    [["A", tm.aN, tm.aU], ["B", tm.bN, tm.bU], ["C", tm.cN, tm.cU]].forEach(([g, count, u]) => {
+      for (let i = 1; i <= count; i++) {
+        n++;
+        const key = `${tm.cat}_${g}_${i}`;
+        slots.push({
+          grade: g, i, n, key, target: u,
+          name: Store.get("slotname_" + key, `New ${tm.cat} ${g} color ${i}`)
+        });
       }
-      annualBuy += m.buy; annualDemand += m.demand;
-      const assigned = Store.get("drop_colors_" + drop.id, []);
-      const card = document.createElement("div");
-      card.className = "card";
-      card.innerHTML = `
-        <h2>${esc(drop.name)} <span class="pill info">${m.winMonths.length}-mo window</span>
-          ${m.overCap ? `<span class="pill bad">over factory capacity</span>` : ""}</h2>
-        <div class="grid c4">
-          <div class="stat"><div class="label">Projected demand</div><div class="value">${fmt(m.demand)}</div>
-            <div class="note">same months last year × growth</div></div>
-          <div class="stat"><div class="label">Drop buy (÷ ${Math.round(asm.sell_through*100)}% ST)</div>
-            <div class="value">${unitField("buy_" + drop.id, m.buy)}</div>
-            <div class="note">manual entry sticks</div></div>
-          <div class="stat"><div class="label">In store</div><div class="value" style="font-size:18px">${fmtDate(m.inStore)}</div>
-            <div class="note">sell out ~${fmtDate(m.sellOut)}</div></div>
-          <div class="stat"><div class="label">Key dates</div>
-            <div class="note">fabric order: <b>${fmtDate(m.fabricOrder)}</b><br>
-            sewing launch: <b>${fmtDate(m.sewingLaunch)}</b><br>
-            handoff: <b>${fmtDate(m.handoff)}</b></div></div>
-        </div>
-        <h3>Factory receipt ramp <span class="muted small">(cap ${fmt(asm.factory_cap_month)}/mo, flag &gt;${fmt(asm.factory_cap_flag)})</span></h3>
-        <p>${m.ramp.map(r => `<span class="pill ${r.qty > asm.factory_cap_flag ? "bad" : "ok"}">${r.ym}: ${fmt(r.qty)}</span>`).join(" ")}</p>
-        <h3>Assigned colorways ${assigned.length ? `(${assigned.length})` : ""}</h3>
-        <div id="dc-${drop.id}">${assigned.length ? assigned.map((c, i) => `
-          <span class="pill ${c.grade === "A" ? "info" : c.grade === "B" ? "ok" : "warn"}">${esc(c.name)} · Grade ${esc(c.grade)} · ${fmt(c.units)}u
-          <a href="#" data-unassign="${drop.id}:${i}" style="color:inherit;margin-left:6px">×</a></span> `).join("")
-          : `<span class="muted small">None yet — assign them in the line sheet allocator below.</span>`}</div>`;
-      wrap.appendChild(card);
     });
-    const sum = document.createElement("div");
-    sum.className = "card";
-    sum.innerHTML = `<div class="grid c3">
-      <div class="stat"><div class="label">Annual rotation buy</div><div class="value">${fmt(annualBuy)}</div>
-        <div class="note">sum of drop buys</div></div>
-      <div class="stat"><div class="label">12-month demand</div><div class="value">${fmt(annualDemand)}</div>
-        <div class="note">Dec 2026 – Nov 2027</div></div>
-      <div class="stat"><div class="label">Peak monthly receipt</div><div class="value">${fmt(Math.max(...DATA.meta.drops.flatMap(d => dropMath(d, asm).ramp.map(r => r.qty))))}</div>
-        <div class="note">vs ${fmt(asm.factory_cap_month)}/mo cap</div></div></div>`;
-    el.appendChild(sum); el.appendChild(wrap); root.appendChild(el);
-    bindOverrides(wrap); bindOverrides(sum);
-    $$("a[data-unassign]", wrap).forEach(a => a.addEventListener("click", ev => {
-      ev.preventDefault();
-      const [did, idx] = a.dataset.unassign.split(":");
-      const arr = Store.get("drop_colors_" + did, []);
-      arr.splice(Number(idx), 1);
-      Store.set("drop_colors_" + did, arr);
-      render();
+    return slots;
+  }
+
+  /* ---------- tab header ---------- */
+  function headerBlock(root) {
+    const el = document.createElement("div");
+    el.className = "pagehead";
+    el.innerHTML = `
+      <div><h1>Build the next receipt</h1>
+      <p class="sub">Every assumption below is editable. Figures recalculate immediately.</p></div>
+      <button class="btn ghost" id="dl-signals">Download planning signals</button>`;
+    root.appendChild(el);
+    $("#dl-signals", el).addEventListener("click", downloadCSV);
+  }
+
+  function statCard(label, value, desc, color) {
+    return `<div class="statcard" style="--tc:${color}">
+      <div class="mlabel">${esc(label)}</div>
+      <div class="statnum">${value}</div>
+      <div class="statdesc">${desc}</div></div>`;
+  }
+
+  function statCards(root, tm) {
+    const el = document.createElement("div");
+    el.className = "statrow";
+    el.innerHTML =
+      statCard("Annual rotation buy", fmt(tm.annualBuy), "sum of 3 drop-sized buys", "var(--orange)") +
+      statCard("12-month demand", fmt(tm.demand12), "served by December, spring and summer drops", "var(--slate)") +
+      statCard("2026 sales anchor", fmt(DATA.demand.annual), "swim units sold · not remnant velocity", "var(--teal)") +
+      statCard("Current stock sell-outs", fmt(tm.sellouts), "zero on-hand with measurable demand", "var(--orange)");
+    root.appendChild(el);
+  }
+
+  /* ---------- sub tabs ---------- */
+  const SUBTABS = [
+    ["signals", "Pace & stock signals"],
+    ["tiers", "Fabric tiers & line sheet"],
+    ["calendar", "Calendar"]
+  ];
+  function subTabs(root) {
+    const cur = Store.get("ui_subtab", "tiers");
+    const el = document.createElement("div");
+    el.className = "subtabs";
+    el.innerHTML = SUBTABS.map(([id, label]) =>
+      `<button data-sub="${id}" class="${cur === id ? "active" : ""}">${esc(label)}</button>`).join("");
+    root.appendChild(el);
+    $$("button[data-sub]", el).forEach(b => b.addEventListener("click", () => {
+      Store.set("ui_subtab", b.dataset.sub);
+      refreshDerived();
     }));
   }
 
-  /* ---------- line sheet allocator ---------- */
-  function styleTypeGuess(style) {
-    // heuristic for tops/bottoms/maillot split when class data is thin
-    const s = style.toLowerCase();
-    const bottomWords = ["cinch", "bambi", "brief", "bottom", "cheeky", "thong", "bikini bottom"];
-    const maillotWords = ["maillot", "one piece", "one-piece", "suit"];
-    if (bottomWords.some(w => s.includes(w))) return "bottoms";
-    if (maillotWords.some(w => s.includes(w))) return "maillots";
-    return "tops";
+  /* ---------- per-colorway buy / expected sell-through / months ----------
+   * Buy is free: tier-target default, typed value always wins.
+   * ST% is an expectation, not a formula: sales = buy × ST%, leftover = buy − sales.
+   * Low ST% reads as "smaller, fun color" (e.g. 120u buy, expect 50%).
+   * Keys: slots → ovr_slot_/ovr_slotbuy_/ovr_slotst_/ovr_slotmo_{cat}_{grade}_{i}
+   *       assigned colorways → ovr_cwbuy_/ovr_cwst_/ovr_cwmo_{nameKey}_{dropId} */
+  function cwExpected(buy, stFrac) {
+    const b = Math.round(+buy || 0);
+    const sales = Math.round(b * stFrac);
+    return { sales, leftover: b - sales };
+  }
+  function slotBuyUnits(slot) {
+    const v = Store.get("ovr_slotbuy_" + slot.key, null);
+    return (v === null || v === "" || v === undefined) ? slotTierUnits(slot) : Math.round(+v);
+  }
+  function cwBuyUnitsEntry(c, dropId) {
+    const nk = cwNameKey(c.name);
+    const v = Store.get("ovr_cwbuy_" + nk + "_" + dropId, null);
+    const fb = (c.buy !== undefined && c.buy !== null) ? c.buy : c.units;
+    return (v === null || v === "" || v === undefined) ? Math.round(+fb || 0) : Math.round(+v);
+  }
+  function slotStFrac(slot, asm) {
+    const v = Store.get("ovr_slotst_" + slot.key, null);
+    return (v === null || v === "" || v === undefined) ? asm.sell_through : +v;
+  }
+  function slotMonths(slot, asm) {
+    const v = Store.get("ovr_slotmo_" + slot.key, null);
+    const fb = asm["grade_" + slot.grade.toLowerCase() + "_months"];
+    return (v === null || v === "" || v === undefined) ? fb : +v;
+  }
+  function slotTierUnits(slot) {
+    const v = Store.get("ovr_slot_" + slot.key, null);
+    return (v === null || v === "" || v === undefined) ? slot.target : Math.round(+v);
+  }
+  function cwNameKey(name) { return String(name).toLowerCase().replace(/\W+/g, "_"); }
+  function cwStFrac(nameKey, dropId, fallback) {
+    const v = Store.get("ovr_cwst_" + nameKey + "_" + dropId, null);
+    return (v === null || v === "" || v === undefined) ? fallback : +v;
+  }
+  function cwMonths(nameKey, dropId, fallback) {
+    const v = Store.get("ovr_cwmo_" + nameKey + "_" + dropId, null);
+    return (v === null || v === "" || v === undefined) ? fallback : +v;
+  }
+  function cwSellOut(inStore, months) { return addDays(inStore, Math.round(months * 30.44)); }
+
+  /* ---------- tiers sub-tab ---------- */
+  function renderTiers(root, tm) {
+    tierBar(root, tm);
+    tierStats(root, tm);
+    const cols = document.createElement("div");
+    cols.className = "twocol";
+    colorGradePlan(cols, tm);
+    allocatorCard(cols, tm);
+    root.appendChild(cols);
+    dropCardsSection(root, tm);
+    trackerCard(root);
+    assumptionsCard(root);
   }
 
+  function tierBar(root, tm) {
+    const t = tm.t, asm = tm.asm;
+    const el = document.createElement("div");
+    el.className = "card";
+    el.innerHTML = `<h2>Fabric tiers</h2>
+      <p class="lede">Tier sizes are editable planning targets. Grade C color count is derived from remaining need.</p>
+      <div class="formgrid tierbar">
+        <label class="f">Fabric category
+          <select id="tb-cat">${["Matte", "Shiny", "Novelty", "Print"].map(c =>
+            `<option ${t.fabric_category === c ? "selected" : ""}>${c}</option>`).join("")}</select></label>
+        <label class="f">Grade A units / color
+          <input type="number" id="tb-au" value="${asm.grade_a_units}" min="50" step="10"></label>
+        <label class="f">Grade A colors
+          <input type="number" id="tb-ac" value="${t.grade_a_colors}" min="0" step="1"></label>
+        <label class="f">Grade B units / color
+          <input type="number" id="tb-bu" value="${asm.grade_b_units}" min="50" step="10"></label>
+        <label class="f">Grade B colors
+          <input type="number" id="tb-bc" value="${t.grade_b_colors}" min="0" step="1"></label>
+        <label class="f">Grade C units / color
+          <input type="number" id="tb-cu" value="${asm.grade_c_units}" min="25" step="10"></label>
+      </div>`;
+    root.appendChild(el);
+    const upd = () => refreshDerived();
+    $("#tb-cat", el).addEventListener("change", e => { setTier("fabric_category", e.target.value); upd(); });
+    $("#tb-au", el).addEventListener("change", e => { setAssumption("grade_a_units", +e.target.value); upd(); });
+    $("#tb-ac", el).addEventListener("change", e => { setTier("grade_a_colors", +e.target.value); upd(); });
+    $("#tb-bu", el).addEventListener("change", e => { setAssumption("grade_b_units", +e.target.value); upd(); });
+    $("#tb-bc", el).addEventListener("change", e => { setTier("grade_b_colors", +e.target.value); upd(); });
+    $("#tb-cu", el).addEventListener("change", e => { setAssumption("grade_c_units", +e.target.value); upd(); });
+  }
+
+  function tierStats(root, tm) {
+    const el = document.createElement("div");
+    el.className = "statrow";
+    const diff = tm.capacity - tm.need;
+    const capNote = diff === 0 ? "matches need"
+      : diff > 0 ? `${fmt(diff)} above need` : `${fmt(-diff)} below need`;
+    el.innerHTML =
+      statCard("New-color need", fmt(tm.need), `${esc(tm.cat)} units from seasonal demand`, "var(--slate)") +
+      statCard("Tier capacity", fmt(tm.capacity), capNote, "var(--slate)") +
+      statCard("Color slots", fmt(tm.slots), `${tm.aN} A · ${tm.bN} B · ${tm.cN} C`, "var(--slate)") +
+      statCard("Black reorder now", fmt(tm.blackReorder), "separate lean replenishment track", "var(--slate)");
+    root.appendChild(el);
+  }
+
+  /* ----- color grade plan (slot list) ----- */
+  function colorGradePlan(root, tm) {
+    const el = document.createElement("div");
+    el.className = "card";
+    const slots = buildSlots(tm);
+    el.innerHTML = `<h2>Color grade plan</h2>
+      <p class="lede">Demand-ranked colorways; tier sizes are editable planning targets.</p>
+      <div style="max-height:620px;overflow:auto" id="slotlist"></div>`;
+    root.appendChild(el);
+    const host = $("#slotlist", el);
+    const asm = tm.asm;
+    slots.forEach(s => {
+      const st = slotStFrac(s, asm), mo = slotMonths(s, asm), tu = slotTierUnits(s);
+      const buy = slotBuyUnits(s);
+      const exp = cwExpected(buy, st);
+      const row = document.createElement("div");
+      row.className = "slotrow";
+      row.innerHTML = `
+        <span class="gbadge ${s.grade}">${s.grade}</span>
+        <div style="min-width:0;flex:1">
+          <div class="slotname">${esc(s.name)}</div>
+          <div class="slotsub"><b>${mo} mo</b> in store · expected sales <b>${fmt(exp.sales)}u</b> · leftover ${fmt(exp.leftover)}u · double-click name to rename</div>
+        </div>
+        <span class="slotrank">#${s.n}</span>
+        <div class="slotnums">
+          <div><div class="mlabel">Tier target</div>${unitField("slot_" + s.key, tu)}</div>
+          <div><div class="mlabel">Buy</div>${unitField("slotbuy_" + s.key, buy)}</div>
+          <div><div class="mlabel">ST%</div>
+            <input type="number" data-slotst="${esc(s.key)}" value="${Math.round(st * 100)}" min="5" max="200" step="1" title="Expected sell-through %"></div>
+          <div><div class="mlabel">Mo</div>
+            <input type="number" data-slotmo="${esc(s.key)}" value="${mo}" min="1" max="12" step="1" title="Months in store"></div>
+        </div>`;
+      host.appendChild(row);
+      row.addEventListener("click", e => {
+        if (e.target.tagName === "INPUT") return;
+        loadSlotIntoAllocator(s, tm);
+      });
+      const nm = $(".slotname", row);
+      nm.addEventListener("dblclick", e => {
+        e.stopPropagation();
+        const inp = document.createElement("input");
+        inp.type = "text"; inp.value = s.name;
+        nm.replaceWith(inp); inp.focus(); inp.select();
+        const commit = () => {
+          const v = inp.value.trim();
+          if (v) Store.set("slotname_" + s.key, v);
+          refreshDerived();
+        };
+        inp.addEventListener("blur", commit);
+        inp.addEventListener("keydown", ev => { if (ev.key === "Enter") inp.blur(); if (ev.key === "Escape") refreshDerived(); });
+        inp.addEventListener("click", ev => ev.stopPropagation());
+      });
+    });
+    bindOverrides(host);
+    $$("input[data-slotst]", host).forEach(inp => inp.addEventListener("change", () => {
+      const raw = inp.value;
+      if (raw === "" || raw === null) Store.remove("ovr_slotst_" + inp.dataset.slotst);
+      else Store.set("ovr_slotst_" + inp.dataset.slotst, Math.min(2, Math.max(0.05, +raw / 100)));
+      refreshDerived();
+    }));
+    $$("input[data-slotmo]", host).forEach(inp => inp.addEventListener("change", () => {
+      const raw = inp.value;
+      if (raw === "" || raw === null) Store.remove("ovr_slotmo_" + inp.dataset.slotmo);
+      else Store.set("ovr_slotmo_" + inp.dataset.slotmo, Math.min(12, Math.max(1, +raw)));
+      refreshDerived();
+    }));
+  }
+
+  function loadSlotIntoAllocator(s, tm) {
+    const asm = tm.asm;
+    const form = getAllocForm();
+    form.name = s.name;
+    form.grade = s.grade;
+    form.fabric = tm.cat;
+    form.totalUnits = slotBuyUnits(s);
+    form.stPct = Math.round(slotStFrac(s, asm) * 100);
+    form.months = slotMonths(s, asm);
+    setAllocForm(form);
+    refreshDerived();
+    setTimeout(() => { const a = $("#allocator"); if (a) a.scrollIntoView({ behavior: "smooth", block: "start" }); }, 60);
+  }
+
+  /* ----- line sheet allocator ----- */
+  function getAllocForm() {
+    const asm = getAssumptions(), t = getTier();
+    const d = {
+      name: "", family: "Red", fabric: t.fabric_category, dropId: "dec", grade: "A",
+      totalUnits: asm.grade_a_units, stPct: Math.round(asm.sell_through * 100),
+      months: asm.grade_a_months,
+      fabricWks: asm.fabric_lead_wks, sewingWks: asm.sewing_lead_wks,
+      topsPct: asm.tops_pct, bottomsPct: asm.bottoms_pct, maillotsPct: asm.maillots_pct
+    };
+    return Object.assign(d, Store.get("alloc_form", {}));
+  }
+  function setAllocForm(f) { Store.set("alloc_form", f); }
+
+  function styleTypeGuess(style) {
+    const s = style.toLowerCase();
+    if (["cinch", "bambi", "brief", "bottom", "cheeky", "thong", "bikini bottom"].some(w => s.includes(w))) return "bottoms";
+    if (["maillot", "one piece", "one-piece", "suit"].some(w => s.includes(w))) return "maillots";
+    return "tops";
+  }
   function affinityFor(style) {
-    // top pairing partners for a style, ranked
     const out = [];
     DATA.affinity.pairs.forEach(p => {
       if (p.a === style) out.push({ other: p.b, n: p.n });
@@ -162,62 +374,7 @@ const Plan = (() => {
     });
     return out.sort((x, y) => y.n - x.n).slice(0, 5);
   }
-
-  function allocatorCard(root) {
-    const asm = getAssumptions();
-    const el = document.createElement("div");
-    el.className = "card";
-    el.innerHTML = `<h2>Line sheet allocator</h2>
-      <p class="muted small">Split a colorway into tops / bottoms / maillots, then check matching-bottom affinity.
-      Affinity starts the draft — add, remove, or override any style and your entries always win.</p>
-      <div class="toolbar">
-        <label class="f">Colorway name <input type="text" id="ls-name" placeholder="e.g. monterrico blue" style="width:200px"></label>
-        <label class="f">Drop <select id="ls-drop">${DATA.meta.drops.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join("")}</select></label>
-        <label class="f">Grade <select id="ls-grade">
-          <option value="A">A (~${asm.grade_a_units}u, ${asm.grade_a_months} mo)</option>
-          <option value="B">B (~${asm.grade_b_units}u, ${asm.grade_b_months} mo)</option>
-          <option value="C">C (~${asm.grade_c_units}u, ${asm.grade_c_months} mo)</option></select></label>
-        <label class="f">Tops % <input type="number" id="ls-tops" value="${asm.tops_pct}" style="width:70px"></label>
-        <label class="f">Bottoms % <input type="number" id="ls-bottoms" value="${asm.bottoms_pct}" style="width:70px"></label>
-        <label class="f">Maillots % <input type="number" id="ls-maillots" value="${asm.maillots_pct}" style="width:70px"></label>
-        <button class="btn sm" id="ls-build">Build draft</button>
-      </div>
-      <div id="ls-recut-note"></div>
-      <div id="ls-output"></div>`;
-    root.appendChild(el);
-
-    $("#ls-build", el).addEventListener("click", () => {
-      const name = $("#ls-name", el).value.trim().toLowerCase();
-      const grade = $("#ls-grade", el).value;
-      const dropId = $("#ls-drop", el).value;
-      const tp = Number($("#ls-tops", el).value) / 100,
-            bp = Number($("#ls-bottoms", el).value) / 100,
-            mp = Number($("#ls-maillots", el).value) / 100;
-      if (!name) { alert("Name the colorway first."); return; }
-      let tierUnits = grade === "A" ? asm.grade_a_units : grade === "B" ? asm.grade_b_units : asm.grade_c_units;
-
-      // RECUT detection: color already exists in inventory (and not excluded)
-      const excluded = new Set([...DATA.meta.pull_list_colors, ...DATA.meta.dead_colors]);
-      const existingRows = DATA.inventory.filter(e => e.c === name && !excluded.has(e.c));
-      const isRecut = existingRows.length > 0;
-      let recutHoles = null;
-      if (isRecut) {
-        // hole analysis: for styles in the affinity draft, planned share vs available
-        recutHoles = computeHoles(name, tierUnits, tp, bp, mp, existingRows);
-        tierUnits = recutHoles.total;
-      }
-
-      const draft = buildDraft(tierUnits, tp, bp, mp);
-      renderAllocatorOutput($("#ls-output", el), { name, grade, dropId, tierUnits, tp, bp, mp, draft, isRecut, recutHoles });
-      $("#ls-recut-note", el).innerHTML = isRecut
-        ? `<p class="pill warn">RECUT — "${esc(name)}" exists in stock. Target set to computed hole quantity (${fmt(tierUnits)}u), not the generic tier default.</p>
-           ${recutHoles.urgent.length ? `<p class="small"><b>Also urgent elsewhere:</b> ${recutHoles.urgent.slice(0, 5).map(u => esc(u)).join("; ")}</p>` : ""}`
-        : `<p class="hint">New color — target is the editable tier default. Type any number to override; it sticks.</p>`;
-    });
-  }
-
   function topStylesByType(type, n) {
-    // rank styles by 2026-era sales volume from style_velocity histories
     const totals = {};
     for (const [key, hist] of Object.entries(DATA.styleVelocity)) {
       const [style] = key.split("|");
@@ -226,19 +383,13 @@ const Plan = (() => {
     }
     return Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, n).map(e => e[0]);
   }
-
   function buildDraft(tierUnits, tp, bp, mp) {
     const draft = [];
-    const alloc = [
-      ["tops", Math.round(tierUnits * tp)],
-      ["bottoms", Math.round(tierUnits * bp)],
-      ["maillots", Math.round(tierUnits * mp)]
-    ];
-    alloc.forEach(([type, units]) => {
+    [["tops", Math.round(tierUnits * tp)], ["bottoms", Math.round(tierUnits * bp)],
+     ["maillots", Math.round(tierUnits * mp)]].forEach(([type, units]) => {
       if (units <= 0) return;
       const styles = topStylesByType(type, 5);
       if (!styles.length) { draft.push({ style: "(no " + type + " styles found)", type, units, affinity: [] }); return; }
-      // weight by rank
       const weights = styles.map((_, i) => styles.length - i);
       const wsum = weights.reduce((a, b) => a + b, 0);
       let assigned = 0;
@@ -250,12 +401,9 @@ const Plan = (() => {
     });
     return draft;
   }
-
   function computeHoles(colorName, tierUnits, tp, bp, mp, rows) {
-    // available by style (active stores)
     const avail = {};
     rows.forEach(r => { avail[r.s] = (avail[r.s] || 0) + r.t; });
-    // planned share per style from a draft at tier units
     const draft = buildDraft(tierUnits, tp, bp, mp);
     let total = 0;
     const perStyle = draft.map(d => {
@@ -263,110 +411,435 @@ const Plan = (() => {
       total += hole;
       return { style: d.style, planned: d.units, avail: avail[d.style] || 0, hole };
     });
-    // urgent elsewhere: active style/color with 0 OH and recent YoY demand
     const urgent = DATA.alerts.filter(a => a.status === "stockout_demand").slice(0, 8)
       .map(a => `${a.style} (${a.color}, size ${a.size})`);
     return { total, perStyle, urgent };
   }
 
-  function renderAllocatorOutput(out, ctx) {
-    const { name, grade, dropId, draft, isRecut, recutHoles } = ctx;
-    const key = "alloc_" + name.replace(/\W+/g, "_");
-    out.innerHTML = `
-      <h3>${isRecut ? "Recut" : "New"} colorway: ${esc(name)} · Grade ${grade} · target ${unitField(key + "_target", ctx.tierUnits)}</h3>
-      ${isRecut && recutHoles ? `<details open><summary>Hole analysis (planned vs available)</summary><div class="body">
-        <table><tr><th>Style</th><th>Planned</th><th>Available</th><th>Hole (recut)</th></tr>
-        ${recutHoles.perStyle.map(p => `<tr><td>${esc(p.style)}</td><td>${fmt(p.planned)}</td><td>${fmt(p.avail)}</td><td><b>${fmt(p.hole)}</b></td></tr>`).join("")}
-        </table></div></details>` : ""}
-      <table id="ls-table"><tr><th>Style</th><th>Type</th><th>Units</th><th>Affinity signal</th><th></th></tr>
-      ${draft.map((d, i) => `<tr>
-        <td>${esc(d.style)}</td><td>${esc(d.type)}</td>
-        <td>${unitField(key + "_s" + i, d.units)}</td>
-        <td class="small muted">${d.affinity.map(a => `${esc(a.other)} (${a.n})`).join("<br>") || "—"}</td>
-        <td><button class="btn ghost sm" data-rm="${i}">×</button></td></tr>`).join("")}
-      </table>
-      <div class="toolbar" style="margin-top:10px">
-        <label class="f">Add style <input type="text" id="ls-add-name" placeholder="style name" style="width:180px"></label>
-        <label class="f">Units <input type="number" id="ls-add-units" value="50" style="width:80px"></label>
-        <button class="btn ghost sm" id="ls-add">Add style</button>
-        <button class="btn sm" id="ls-save">Add colorway to ${esc(DATA.meta.drops.find(d => d.id === dropId).name)}</button>
-      </div>
-      <p class="hint">Removed styles stay removed; typed units never recalculate away.</p>`;
-    bindOverrides(out);
-    let rows = draft.map((d, i) => ({ ...d, oid: key + "_s" + i }));
-    const removed = new Set();
-    const table = $("#ls-table", out);
-    function extraRow(nm, un, idx) {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${esc(nm)}</td><td>manual</td>
-        <td>${unitField(key + "_x" + idx, un)}</td>
-        <td class="small muted">${affinityFor(nm).slice(0, 3).map(a => `${esc(a.other)} (${a.n})`).join("<br>") || "—"}</td>
-        <td><button class="btn ghost sm">×</button></td>`;
-      tr.querySelector("button").addEventListener("click", () => {
-        const extra = Store.get(key + "_extra", []);
-        extra.splice(idx, 1);
-        Store.set(key + "_extra", extra);
-        tr.remove();
-      });
-      table.appendChild(tr);
-      bindOverrides(tr);
-    }
-    // restore manually-added styles persisted earlier
-    Store.get(key + "_extra", []).forEach((x, i) => extraRow(x.style, x.units, i));
-    $$("button[data-rm]", out).forEach(b => b.addEventListener("click", () => {
-      removed.add(Number(b.dataset.rm));
-      b.closest("tr").remove();
-      Store.set(key + "_removed", [...removed]);
-    }));
-    // restore removals persisted earlier
-    (Store.get(key + "_removed", [])).forEach(i => {
-      const b = $(`button[data-rm="${i}"]`, out);
-      if (b) b.closest("tr").remove();
-    });
-    $("#ls-add", out).addEventListener("click", () => {
-      const nm = $("#ls-add-name", out).value.trim().toLowerCase();
-      const un = Number($("#ls-add-units", out).value) || 0;
-      if (!nm) return;
-      const extra = Store.get(key + "_extra", []);
-      extra.push({ style: nm, units: un });
-      Store.set(key + "_extra", extra);
-      extraRow(nm, un, extra.length - 1);
-      $("#ls-add-name", out).value = "";
-    });
-    $("#ls-save", out).addEventListener("click", () => {
-      const target = Store.get("ovr_" + key + "_target", ctx.tierUnits);
-      const arr = Store.get("drop_colors_" + dropId, []);
-      arr.push({ name, grade, units: Number(target) || ctx.tierUnits });
-      Store.set("drop_colors_" + dropId, arr);
-      render();
-    });
+  let _lastDraft = null;
+
+  /* affinity cell: top pairing partner front and center, rest as footnote */
+  function affCell(aff) {
+    if (!aff || !aff.length) return `<span class="faint">—</span>`;
+    const [top, ...rest] = aff;
+    return `<div class="aff-top"><span class="afftag">affinity</span>Pairs with <b>${esc(top.other)}</b> · ${top.n} baskets</div>` +
+      (rest.length ? `<div class="small faint">also ${rest.map(a => `${esc(a.other)} (${a.n})`).join(" · ")}</div>` : "");
   }
 
-  /* ---------- schedule tracker ---------- */
+  /* timeline strip: makes "months in store" unmissable — every date derives from it */
+  function renderTimeline(tm, scope) {
+    const host = scope ? $("#al-timeline", scope) : $("#al-timeline");
+    if (!host) return;
+    const f = getAllocForm(), asm = tm.asm;
+    const drop = DATA.meta.drops.find(d => d.id === f.dropId) || DATA.meta.drops[0];
+    const inStore = drop.in_store;
+    const fw = +f.fabricWks || 0, sw = +f.sewingWks || 0, tr = asm.transit_wks || 0;
+    const mo = +f.months || 4;
+    const fab = addWeeks(inStore, -(fw + sw + tr));
+    const sew = addWeeks(inStore, -(sw + tr));
+    const so = cwSellOut(inStore, mo);
+    const ho = addDays(so, -14);
+    host.innerHTML = `<div class="timeline">
+      <div class="tchip"><span class="mlabel">Fabric order</span><b>${fmtDate(fab)}</b></div><span class="tarrow">→</span>
+      <div class="tchip"><span class="mlabel">Sewing launch</span><b>${fmtDate(sew)}</b></div><span class="tarrow">→</span>
+      <div class="tchip"><span class="mlabel">In store</span><b>${fmtDate(inStore)}</b></div><span class="tarrow">→</span>
+      <div class="tchip hot"><span class="mlabel">${mo} mo in store</span><b>Handoff ${fmtDate(ho)}</b></div><span class="tarrow">→</span>
+      <div class="tchip hot"><span class="mlabel">Sell-out</span><b>${fmtDate(so)}</b></div>
+    </div>`;
+  }
+
+  function allocatorCard(root, tm) {
+    const asm = tm.asm, f = getAllocForm();
+    const el = document.createElement("div");
+    el.className = "card";
+    el.id = "allocator";
+    const gradeOpts = [["A", tm.aU], ["B", tm.bU], ["C", tm.cU]].map(([g, u]) =>
+      `<option value="${g}" ${f.grade === g ? "selected" : ""}>Grade ${g} · ${fmt(u)}u</option>`).join("");
+    const fams = ["Red", "Blue", "Green", "Purple", "Pink", "Yellow", "Orange", "Brown", "Black", "White", "Neutral", "Print", "Multi"];
+    el.innerHTML = `<h2>Line sheet allocator</h2>
+      <p class="lede">Draft seeded by basket affinity — styles are ranked by what actually sells together in the same receipt. Each row shows its top pairing partners so you can balance the set.</p>
+      <div class="formgrid" style="grid-template-columns:repeat(5,minmax(0,1fr))">
+        <label class="f">New colorway <input type="text" id="al-name" value="${esc(f.name)}" placeholder="e.g. monterrico blue"></label>
+        <label class="f">Color family <select id="al-fam">${fams.map(c =>
+          `<option ${f.family === c ? "selected" : ""}>${c}</option>`).join("")}</select></label>
+        <label class="f">Fabric <select id="al-fab">${["Matte", "Shiny", "Novelty", "Print"].map(c =>
+          `<option ${f.fabric === c ? "selected" : ""}>${c}</option>`).join("")}</select></label>
+        <label class="f">Drop <select id="al-drop">${DATA.meta.drops.map(d =>
+          `<option value="${d.id}" ${f.dropId === d.id ? "selected" : ""}>${esc(d.name)}</option>`).join("")}</select></label>
+        <label class="f">Color grade <select id="al-grade">${gradeOpts}</select></label>
+      </div>
+      <div class="formgrid" style="grid-template-columns:repeat(5,minmax(0,1fr));margin-top:14px">
+        <label class="f">Buy units <input type="number" id="al-units" value="${f.totalUnits}" min="0" step="10"></label>
+        <label class="f">Sell-through % <input type="number" id="al-st" value="${f.stPct}" min="5" max="200" step="1"></label>
+        <label class="f">Months <input type="number" id="al-mo" value="${f.months}" min="1" max="12" step="1"></label>
+        <label class="f">Fabric wks <input type="number" id="al-fw" value="${f.fabricWks}" min="1" max="20"></label>
+        <label class="f">Sewing wks <input type="number" id="al-sw" value="${f.sewingWks}" min="1" max="20"></label>
+      </div>
+      <div class="formgrid" style="grid-template-columns:repeat(5,minmax(0,1fr));margin-top:14px">
+        <label class="f">Tops % <input type="number" id="al-tp" value="${f.topsPct}" min="0" max="100"></label>
+        <label class="f">Bottoms % <input type="number" id="al-bp" value="${f.bottomsPct}" min="0" max="100"></label>
+        <label class="f">Maillots % <input type="number" id="al-mp" value="${f.maillotsPct}" min="0" max="100"></label>
+      </div>
+      <div class="alloc-head">
+        <p class="affinity-note" id="al-note"></p>
+        <button class="btn" id="al-save">Add colorway to session plan</button>
+      </div>
+      <div id="al-timeline"></div>
+      <div class="addstyle">
+        <label class="f">Add a style by name <input type="text" id="as-name" placeholder="style name"></label>
+        <label class="f">Type <select id="as-type"><option value="tops">Tops</option><option value="bottoms">Bottoms</option><option value="maillots">Maillots</option></select></label>
+        <label class="f">Units <input type="number" id="as-units" value="50" min="0"></label>
+        <div><button class="btn ghost" id="as-add">Add style</button></div>
+      </div>
+      <div class="sessionbox" id="session-plan"></div>
+      <div id="ls-output"></div>`;
+    root.appendChild(el);
+
+    const upd = () => {
+      const nf = {
+        name: $("#al-name", el).value, family: $("#al-fam", el).value, fabric: $("#al-fab", el).value,
+        dropId: $("#al-drop", el).value, grade: $("#al-grade", el).value,
+        totalUnits: +$("#al-units", el).value || 0, stPct: +$("#al-st", el).value || 70,
+        months: +$("#al-mo", el).value || 4,
+        fabricWks: +$("#al-fw", el).value || 0, sewingWks: +$("#al-sw", el).value || 0,
+        topsPct: +$("#al-tp", el).value || 0, bottomsPct: $("#al-bp", el).value === "" ? 0 : +$("#al-bp", el).value,
+        maillotsPct: $("#al-mp", el).value === "" ? 0 : +$("#al-mp", el).value
+      };
+      // grade change re-seeds tier target + months from grade defaults
+      if (nf.grade !== f.grade) {
+        nf.totalUnits = nf.grade === "A" ? tm.aU : nf.grade === "B" ? tm.bU : tm.cU;
+        nf.months = asm["grade_" + nf.grade.toLowerCase() + "_months"];
+        $("#al-units", el).value = nf.totalUnits;
+        $("#al-mo", el).value = nf.months;
+      }
+      setAllocForm(nf);
+      renderDraft(tm);
+    };
+    ["al-name", "al-fam", "al-fab", "al-drop", "al-grade", "al-units", "al-st", "al-mo",
+     "al-fw", "al-sw", "al-tp", "al-bp", "al-mp"].forEach(id => {
+      $("#" + id, el).addEventListener("change", upd);
+      $("#" + id, el).addEventListener("input", e => {
+        if (id === "al-name") { const nf = getAllocForm(); nf.name = e.target.value; setAllocForm(nf); renderDraft(tm); }
+      });
+    });
+
+    $("#as-add", el).addEventListener("click", () => {
+      const nm = $("#as-name", el).value.trim().toLowerCase();
+      if (!nm) return;
+      const form = getAllocForm();
+      const key = "alloc_" + cwNameKey(form.name || "unnamed");
+      const extra = Store.get(key + "_extra", []);
+      extra.push({ style: nm, units: +$("#as-units", el).value || 0, type: $("#as-type", el).value });
+      Store.set(key + "_extra", extra);
+      $("#as-name", el).value = "";
+      renderDraft(tm);
+    });
+    $("#al-save", el).addEventListener("click", () => saveColorway(tm));
+
+    renderSessionBox(el, tm);
+    renderDraft(tm, el);
+  }
+
+  function draftNameKey() {
+    const f = getAllocForm();
+    return "alloc_" + cwNameKey(f.name || "unnamed");
+  }
+
+  function renderDraft(tm, scope) {
+    const host = scope ? $("#ls-output", scope) : $("#ls-output");
+    if (!host) return;
+    const asm = tm.asm, f = getAllocForm();
+    renderTimeline(tm, scope);
+    const rawName = (f.name || "").trim();
+    const name = rawName.toLowerCase();
+    const key = draftNameKey();
+    const stFrac = (+f.stPct || 70) / 100;
+    const tierUnits = Math.max(0, Math.round(+f.totalUnits || 0));
+    if (!name) {
+      host.innerHTML = `<p class="hint">Name a colorway above to build its line sheet draft.</p>`;
+      setAllocNote(tm, f, tierUnits, stFrac, 0, false, undefined, scope);
+      _lastDraft = null;
+      return;
+    }
+    const tp = (+f.topsPct || 0) / 100, bp = (+f.bottomsPct || 0) / 100, mp = (+f.maillotsPct || 0) / 100;
+
+    // recut detection
+    const excluded = new Set([...DATA.meta.pull_list_colors, ...DATA.meta.dead_colors]);
+    const existingRows = DATA.inventory.filter(e => e.c === name && !excluded.has(e.c));
+    const isRecut = existingRows.length > 0;
+    let recutHoles = null, holeTarget = tierUnits;
+    if (isRecut) {
+      recutHoles = computeHoles(name, tierUnits, tp, bp, mp, existingRows);
+      holeTarget = recutHoles.total;
+    }
+    const buyUnits = holeTarget;
+
+    const draft = buildDraft(buyUnits, tp, bp, mp);
+    const removed = new Set(Store.get(key + "_removed", []));
+    const extras = Store.get(key + "_extra", []);
+    const rows = [];
+    draft.forEach((d, i) => {
+      if (removed.has(i)) return;
+      rows.push({ style: d.style, type: d.type, units: d.units, affinity: d.affinity, oid: key + "_s" + i, extra: false });
+    });
+    extras.forEach((x, xi) => rows.push({ style: x.style, type: x.type || "tops", units: x.units, affinity: affinityFor(x.style).slice(0, 3), oid: key + "_x" + xi, extra: true, xi }));
+
+    const targets = { tops: Math.round(buyUnits * tp), bottoms: Math.round(buyUnits * bp), maillots: Math.round(buyUnits * mp) };
+    const valOf = r => { const v = Store.get("ovr_" + r.oid, null); return (v === null || v === "" || v === undefined) ? r.units : +v; };
+
+    let html = "";
+    if (isRecut) {
+      const holeExp = cwExpected(buyUnits, stFrac);
+      html += `<div class="recutflag">RECUT — "${esc(rawName)}" exists in stock. Hole target ${fmt(holeTarget)}u = buy ${fmt(buyUnits)}u → ${fmt(holeExp.sales)} expected sales @ ${Math.round(stFrac * 100)}%.</div>
+      <details class="hole" open><summary>Hole analysis (planned vs available)</summary><div class="body">
+      <table class="holetable"><tr><th>Style</th><th class="num">Planned</th><th class="num">Available</th><th class="num">Hole</th></tr>
+      ${recutHoles.perStyle.map(p => `<tr><td>${esc(p.style)}</td><td class="num">${fmt(p.planned)}</td><td class="num">${fmt(p.avail)}</td><td class="num"><b>${fmt(p.hole)}</b></td></tr>`).join("")}
+      </table>
+      ${recutHoles.urgent.length ? `<p class="small" style="margin-top:10px"><b>Also urgent elsewhere:</b> ${recutHoles.urgent.slice(0, 5).map(esc).join("; ")}</p>` : ""}
+      </div></details>`;
+    }
+    // affinity headline: strongest pairs inside this draft, front and center
+    const pairSeen = new Set(), pairList = [];
+    rows.forEach(r => (r.affinity || []).forEach(a => {
+      const k = [r.style, a.other].sort().join("");
+      if (!pairSeen.has(k)) { pairSeen.add(k); pairList.push({ a: r.style, b: a.other, n: a.n }); }
+    }));
+    pairList.sort((x, y) => y.n - x.n);
+    const topPairs = pairList.slice(0, 3);
+    if (topPairs.length) {
+      html += `<div class="aff-lede">Affinity-seeded draft — strongest pairs in this colorway: ` +
+        topPairs.map(p => `<b>${esc(p.a)} + ${esc(p.b)}</b> (${p.n} baskets)`).join(" · ") + `</div>`;
+    }
+    ["tops", "bottoms", "maillots"].forEach(type => {
+      const trs = rows.filter(r => r.type === type);
+      if (!trs.length && targets[type] <= 0) return;
+      const alloc = trs.reduce((s, r) => s + valOf(r), 0);
+      html += `<div class="alloc-sec">${type} · ${fmt(alloc)} allocated / ${fmt(targets[type])} ratio target</div>
+      <table><tr><th>Style</th><th>Type</th><th class="num">Units</th><th>Affinity signal</th><th></th></tr>
+      ${trs.map(r => `<tr>
+        <td>${esc(r.style)}</td><td class="muted small">${esc(r.type)}</td>
+        <td class="num">${unitField(r.oid, r.units, 'style="width:84px;text-align:right"')}</td>
+        <td>${affCell(r.affinity)}</td>
+        <td><button class="linkbtn" data-rm="${esc(r.oid)}" title="Remove style">×</button></td></tr>`).join("")}
+      </table>`;
+    });
+    html += `<p class="hint">Removed styles stay removed; typed units never recalculate away.</p>`;
+    host.innerHTML = html;
+
+    bindOverrides(host); // no refreshDerived inside #ls-output (guard in data.js)
+    const recount = () => {
+      const alloc = rows.reduce((s, r) => s + valOf(r), 0);
+      setAllocNote(tm, f, tierUnits, stFrac, alloc, isRecut, buyUnits, scope);
+    };
+    $$("input[data-override]", host).forEach(inp => inp.addEventListener("input", recount));
+    $$("button[data-rm]", host).forEach(b => b.addEventListener("click", () => {
+      const oid = b.dataset.rm;
+      const m = oid.match(/_s(\d+)$/);
+      if (m) {
+        const rem = new Set(Store.get(key + "_removed", []));
+        rem.add(+m[1]); Store.set(key + "_removed", [...rem]);
+      } else {
+        const xm = oid.match(/_x(\d+)$/);
+        if (xm) { const ex = Store.get(key + "_extra", []); ex.splice(+xm[1], 1); Store.set(key + "_extra", ex); }
+      }
+      renderDraft(tm);
+    }));
+
+    _lastDraft = { rows, valOf, buyUnits, tierUnits, stFrac, rawName, name, key, isRecut };
+    recount();
+  }
+
+  function setAllocNote(tm, f, tierUnits, stFrac, allocated, isRecut, buyUnits, scope) {
+    const n = scope ? $("#al-note", scope) : $("#al-note");
+    if (!n) return;
+    const gpct = Math.round(tm.asm.sell_through * 100), spct = Math.round(stFrac * 100);
+    const buy = (buyUnits !== undefined) ? buyUnits : Math.max(0, Math.round(+f.totalUnits || 0));
+    const exp = cwExpected(buy, stFrac);
+    n.textContent = `Expected sell-through ${spct}% (default ${gpct}%): ${fmt(buy)}u buy → ${fmt(exp.sales)} expected sales, ${fmt(exp.leftover)} planned leftover. ` +
+      `Affinity starts the draft; manual style and unit overrides are active. ${fmt(allocated)} of ${fmt(buy)} units allocated.` +
+      (isRecut ? " Recut hole target shown." : "");
+  }
+
+  function renderSessionBox(scopeEl, tm) {
+    const box = $("#session-plan", scopeEl) || $("#session-plan");
+    if (!box) return;
+    const items = [];
+    DATA.meta.drops.forEach(d => {
+      (Store.get("drop_colors_" + d.id, []) || []).forEach((c, i) => items.push({ drop: d, c, i }));
+    });
+    if (!items.length) {
+      box.className = "sessionbox";
+      box.innerHTML = `No new seasonal colorways added yet.`;
+      return;
+    }
+    box.className = "sessionbox has";
+    box.innerHTML = items.map(({ drop, c, i }) => {
+      const nk = cwNameKey(c.name);
+      const st = cwStFrac(nk, drop.id, (c.st !== undefined ? c.st : tm.asm.sell_through));
+      const mo = cwMonths(nk, drop.id, (c.months !== undefined ? c.months : tm.asm["grade_" + String(c.grade).toLowerCase() + "_months"] || 4));
+      const tu = (c.units !== undefined ? c.units : 0);
+      const buy = cwBuyUnitsEntry(c, drop.id);
+      const exp = cwExpected(buy, st);
+      return `<div class="sessrow"><span class="gbadge ${esc(c.grade)}" style="width:24px;height:24px;font-size:11px">${esc(c.grade)}</span>
+        <div><b>${esc(c.name)}</b> <span class="muted small">· ${esc(drop.name)} · ${fmt(buy)}u buy, expect ${Math.round(st * 100)}% → ${fmt(exp.sales)} sales · ${mo} mo</span></div>
+        <button class="linkbtn x" data-sessrm="${drop.id}:${i}">×</button></div>`;
+    }).join("");
+    $$("button[data-sessrm]", box).forEach(b => b.addEventListener("click", () => {
+      const [did, idx] = b.dataset.sessrm.split(":");
+      const arr = Store.get("drop_colors_" + did, []);
+      arr.splice(+idx, 1);
+      Store.set("drop_colors_" + did, arr);
+      refreshDerived();
+    }));
+  }
+
+  function saveColorway(tm) {
+    const f = getAllocForm();
+    const rawName = (f.name || "").trim();
+    if (!rawName) { alert("Name the colorway first."); return; }
+    const nk = cwNameKey(rawName);
+    const stFrac = (+f.stPct || 70) / 100;
+    const months = +f.months || 4;
+    const tierUnits = Math.max(0, Math.round(+f.totalUnits || 0));
+    const buy = (_lastDraft && _lastDraft.key === draftNameKey()) ? _lastDraft.buyUnits : tierUnits;
+    Store.set("ovr_cwst_" + nk + "_" + f.dropId, stFrac);
+    Store.set("ovr_cwmo_" + nk + "_" + f.dropId, months);
+    Store.set("ovr_cwbuy_" + nk + "_" + f.dropId, buy);
+    const styles = (_lastDraft ? _lastDraft.rows : []).map(r => ({
+      style: r.style, type: r.type, units: _lastDraft.valOf(r)
+    }));
+    const arr = Store.get("drop_colors_" + f.dropId, []);
+    arr.push({ name: rawName, grade: f.grade, units: tierUnits, buy, st: stFrac, months,
+               family: f.family, fabric: f.fabric, styles });
+    Store.set("drop_colors_" + f.dropId, arr);
+    refreshDerived();
+  }
+
+  /* ----- drop cards: rotation plan with assigned colorways + ST reconciliation ----- */
+  function dropCardsSection(root, tm) {
+    const el = document.createElement("div");
+    el.className = "card";
+    el.innerHTML = `<h2>Rotation plan — drops</h2>
+      <p class="lede">Drop buy = seasonal demand ÷ ${Math.round(tm.asm.sell_through * 100)}% sell-through (aggregate anchor).
+      Each assigned colorway has its own buy and expected sell-through — total expected sales reconciles against projected demand.
+      Manual entries always win.</p>
+      <div class="dropgrid" id="dropgrid"></div>`;
+    root.appendChild(el);
+    const grid = $("#dropgrid", el);
+    tm.calcs.forEach(({ drop, m }) => {
+      const assigned = Store.get("drop_colors_" + drop.id, []) || [];
+      let cwBuySum = 0, cwSalesSum = 0, cwLeftSum = 0;
+      const cwRows = assigned.map((c, i) => {
+        const nk = cwNameKey(c.name);
+        const stFb = (c.st !== undefined ? c.st : tm.asm.sell_through);
+        const moFb = (c.months !== undefined ? c.months : tm.asm["grade_" + String(c.grade).toLowerCase() + "_months"] || 4);
+        const st = cwStFrac(nk, drop.id, stFb);
+        const mo = cwMonths(nk, drop.id, moFb);
+        const tu = (c.units !== undefined && c.units !== null) ? +c.units : 0;
+        const buy = cwBuyUnitsEntry(c, drop.id);
+        const exp = cwExpected(buy, st);
+        cwBuySum += buy; cwSalesSum += exp.sales; cwLeftSum += exp.leftover;
+        const so = cwSellOut(m.inStore, mo);
+        return { c, i, nk, st, mo, tu, buy, exp, so };
+      });
+      const salesDiff = cwSalesSum - m.demand;
+      const card = document.createElement("div");
+      card.className = "card";
+      card.style.marginBottom = "0";
+      card.innerHTML = `
+        <h3 style="margin-top:0">${esc(drop.name)}
+          <span class="pill info">${m.winMonths.length}-mo window</span>
+          ${m.overCap ? `<span class="pill bad">over factory capacity</span>` : ""}</h3>
+        <div class="kv4">
+          <div class="kv"><div class="k">Projected demand</div><div class="v">${fmt(m.demand)}</div>
+            <div class="n">same months last year × growth</div></div>
+          <div class="kv"><div class="k">Drop buy (anchor)</div><div class="v">${unitField("buy_" + drop.id, m.buy, 'style="width:110px;font-size:20px;font-weight:800;text-align:right"')}</div>
+            <div class="n">demand ÷ ${Math.round(tm.asm.sell_through * 100)}% · manual sticks</div></div>
+          <div class="kv"><div class="k">Colorway exp. sales</div><div class="v">${fmt(cwSalesSum)}</div>
+            <div class="n">vs demand ${fmt(m.demand)} (${salesDiff >= 0 ? "+" : ""}${fmt(salesDiff)})</div></div>
+          <div class="kv"><div class="k">In store</div><div class="v" style="font-size:17px">${fmtDate(m.inStore)}</div>
+            <div class="n">sell out ~${fmtDate(m.sellOut)}</div></div>
+        </div>
+        <div class="n" style="margin:2px 0 10px">Colorway mix: buy Σ <b>${fmt(cwBuySum)}u</b> → expected sales <b>${fmt(cwSalesSum)}u</b>, planned leftover <b>${fmt(cwLeftSum)}u</b> · drop buy anchor <b>${fmt(m.buy)}u</b></div>
+        <div class="k"><b>Key dates</b></div>
+        <div class="n" style="margin:4px 0 8px">fabric order <b>${fmtDate(m.fabricOrder)}</b> ·
+          sewing launch <b>${fmtDate(m.sewingLaunch)}</b> · handoff <b>${fmtDate(m.handoff)}</b></div>
+        <div class="k"><b>Factory receipt ramp</b> <span class="muted small">(cap ${fmt(tm.asm.factory_cap_month)}/mo)</span></div>
+        <div class="ramp">${m.ramp.map(r => `<span class="pill ${r.qty > tm.asm.factory_cap_flag ? "bad" : "ok"}">${r.ym}: ${fmt(r.qty)}</span>`).join(" ")}</div>
+        <div class="k" style="margin-top:10px"><b>Assigned colorways ${assigned.length ? `(${assigned.length})` : ""}</b></div>
+        ${cwRows.length ? `<table style="margin-top:6px"><tr><th>Colorway</th><th>Gr</th><th class="num">Tier</th>
+          <th class="num">Buy</th><th class="num">ST%</th><th class="num">Mo in store</th><th class="num">Exp sales</th><th class="num">Leftover</th><th>Sell-out</th><th></th></tr>
+          ${cwRows.map(r => `<tr>
+            <td><b>${esc(r.c.name)}</b>${r.c.family ? ` <span class="muted small">${esc(r.c.family)} · ${esc(r.c.fabric || "")}</span>` : ""}</td>
+            <td><span class="gbadge ${esc(r.c.grade)}" style="width:24px;height:24px;font-size:11px">${esc(r.c.grade)}</span></td>
+            <td class="num">${fmt(r.tu)}</td>
+            <td class="num"><input type="number" data-cwbuy="${drop.id}|${esc(r.nk)}" value="${r.buy}" min="0" step="10" style="width:76px;text-align:right" title="Buy units"></td>
+            <td class="num"><input type="number" data-cwst="${drop.id}|${esc(r.nk)}" value="${Math.round(r.st * 100)}" min="5" max="200" step="1" style="width:64px;text-align:right" title="Expected sell-through %"></td>
+            <td class="num"><input type="number" data-cwmo="${drop.id}|${esc(r.nk)}" value="${r.mo}" min="1" max="12" step="1" style="width:56px;text-align:right" title="Months in store"></td>
+            <td class="num">${fmt(r.exp.sales)}</td>
+            <td class="num muted">${fmt(r.exp.leftover)}</td>
+            <td><b>${fmtDate(r.so)}</b><div class="faint small">${r.mo} mo</div></td>
+            <td><button class="linkbtn" data-unassign="${drop.id}:${r.i}" title="Remove">×</button></td></tr>`).join("")}
+          </table>` :
+          `<p class="empty">None yet — build one in the line sheet allocator above.</p>`}`;
+      grid.appendChild(card);
+    });
+    bindOverrides(grid);
+    $$("input[data-cwbuy]", grid).forEach(inp => inp.addEventListener("change", () => {
+      const [did, nk] = inp.dataset.cwbuy.split("|");
+      const raw = inp.value;
+      if (raw === "" || raw === null) Store.remove("ovr_cwbuy_" + nk + "_" + did);
+      else Store.set("ovr_cwbuy_" + nk + "_" + did, Math.max(0, Math.round(+raw)));
+      refreshDerived();
+    }));
+    $$("input[data-cwst]", grid).forEach(inp => inp.addEventListener("change", () => {
+      const [did, nk] = inp.dataset.cwst.split("|");
+      const raw = inp.value;
+      if (raw === "" || raw === null) Store.remove("ovr_cwst_" + nk + "_" + did);
+      else Store.set("ovr_cwst_" + nk + "_" + did, Math.min(2, Math.max(0.05, +raw / 100)));
+      refreshDerived();
+    }));
+    $$("input[data-cwmo]", grid).forEach(inp => inp.addEventListener("change", () => {
+      const [did, nk] = inp.dataset.cwmo.split("|");
+      const raw = inp.value;
+      if (raw === "" || raw === null) Store.remove("ovr_cwmo_" + nk + "_" + did);
+      else Store.set("ovr_cwmo_" + nk + "_" + did, Math.min(12, Math.max(1, +raw)));
+      refreshDerived();
+    }));
+    $$("button[data-unassign]", grid).forEach(b => b.addEventListener("click", () => {
+      const [did, idx] = b.dataset.unassign.split(":");
+      const arr = Store.get("drop_colors_" + did, []);
+      arr.splice(+idx, 1);
+      Store.set("drop_colors_" + did, arr);
+      refreshDerived();
+    }));
+  }
+
+  /* ----- schedule tracker ----- */
   function trackerCard(root) {
     const asm = getAssumptions();
     const el = document.createElement("div");
     el.className = "card";
     el.innerHTML = `<h2>Schedule tracker</h2>
-      <p class="muted small">Planned receipt ramp vs. actual WIP receipts per drop. Enter actuals as they land — status flags automatically.</p>
+      <p class="lede">Planned receipt ramp vs. actual WIP receipts per drop. Enter actuals as they land — status flags automatically.</p>
       <div id="trk"></div>`;
     root.appendChild(el);
     const host = $("#trk", el);
     DATA.meta.drops.forEach(drop => {
-      const m = dropMath(drop, asm);
+      const m = dropCalc(drop);
       const rows = m.ramp.map(r => {
         const actual = Store.get(`trk_${drop.id}_${r.ym}`, null);
         const st = actual === null ? `<span class="pill info">pending</span>`
           : actual >= r.qty ? `<span class="pill ok">on track</span>`
           : actual >= r.qty * 0.7 ? `<span class="pill warn">at risk</span>`
           : `<span class="pill bad">behind</span>`;
-        return `<tr><td>${r.ym}</td><td>${fmt(r.qty)}</td>
-          <td><input type="number" data-trk="${drop.id}_${r.ym}" value="${actual === null ? "" : actual}" placeholder="actual" style="width:90px"></td>
+        return `<tr><td>${r.ym}</td><td class="num">${fmt(r.qty)}</td>
+          <td><input type="number" data-trk="${drop.id}_${r.ym}" value="${actual === null ? "" : actual}" placeholder="actual" style="width:96px"></td>
           <td>${st}</td></tr>`;
       }).join("");
       const d = document.createElement("div");
       d.innerHTML = `<h3>${esc(drop.name)} — fabric order ${fmtDate(m.fabricOrder)} · sewing ${fmtDate(m.sewingLaunch)}</h3>
-        <table><tr><th>Month</th><th>Planned</th><th>Actual received</th><th>Status</th></tr>${rows}</table>`;
+        <table><tr><th>Month</th><th class="num">Planned</th><th>Actual received</th><th>Status</th></tr>${rows}</table>`;
       host.appendChild(d);
     });
     $$("input[data-trk]", host).forEach(inp => {
@@ -374,20 +847,135 @@ const Plan = (() => {
         const v = inp.value === "" ? null : Number(inp.value);
         if (v === null) Store.remove("trk_" + inp.dataset.trk);
         else Store.set("trk_" + inp.dataset.trk, v);
-        render();
+        refreshDerived();
       });
     });
   }
 
+  /* ----- remaining global assumptions ----- */
+  function assumptionsCard(root) {
+    const asm = getAssumptions();
+    const fields = [
+      ["sell_through", "Sell-through default (0–1)", 0.3, 1, 0.01],
+      ["growth_pct", "Growth %", -20, 50, 1],
+      ["fabric_lead_wks", "Fabric lead (wks)", 1, 20, 1],
+      ["sewing_lead_wks", "Sewing lead (wks)", 1, 20, 1],
+      ["transit_wks", "Transit (wks)", 0, 8, 1],
+      ["factory_cap_month", "Factory cap (units/mo)", 200, 3000, 50],
+      ["factory_cap_flag", "Flag above (units/mo)", 500, 4000, 50],
+      ["grade_a_months", "Grade A months", 1, 12, 1],
+      ["grade_b_months", "Grade B months", 1, 12, 1],
+      ["grade_c_months", "Grade C months", 1, 12, 1],
+      ["tops_pct", "Default tops %", 0, 100, 1],
+      ["bottoms_pct", "Default bottoms %", 0, 100, 1],
+      ["maillots_pct", "Default maillots %", 0, 100, 1]
+    ];
+    const el = document.createElement("details");
+    el.className = "assump";
+    el.innerHTML = `<summary>Planning assumptions</summary><div class="body">
+      <p class="lede">Every input recalculates immediately and is saved. The sell-through default anchors drop buys and scales per-colorway buys.</p>
+      <div class="asmgrid">${fields.map(([k, label, min, max, step]) => `
+        <label class="f">${esc(label)}<input type="number" data-asm="${k}" min="${min}" max="${max}" step="${step}" value="${asm[k]}"></label>`).join("")}
+      </div>
+      <p style="margin-top:14px"><button class="btn ghost sm" id="asm-reset">Reset to defaults</button></p></div>`;
+    root.appendChild(el);
+    $$("input[data-asm]", el).forEach(inp => inp.addEventListener("change", () => {
+      setAssumption(inp.dataset.asm, Number(inp.value));
+      refreshDerived();
+    }));
+    $("#asm-reset", el).addEventListener("click", () => {
+      Object.keys(DATA.meta.defaults).forEach(k => Store.remove("asm_" + k));
+      Object.keys(TIER_DEFAULTS).forEach(k => Store.remove("asm_" + k));
+      refreshDerived();
+    });
+  }
+
+  /* ----- pace & stock signals sub-tab ----- */
+  function renderSignals(root) {
+    const el = document.createElement("div");
+    el.className = "card";
+    el.innerHTML = `<h2>Pace &amp; stock signals</h2>
+      <p class="lede">Affinity-led demand read: broken pairs to fix first, then velocity with on-hand and cover. Velocity uses the same period last year — never peak-summer pace for fall.</p>`;
+    root.appendChild(el);
+    const host = document.createElement("div");
+    root.appendChild(host);
+    FixNow.renderSections(host, "signals");
+  }
+
+  /* ----- main render ----- */
   function render() {
     const root = $("#tab-plan");
     root.innerHTML = "";
-    assumptionsCard(root);
-    dropCards(root);
-    allocatorCard(root);
-    trackerCard(root);
+    headerBlock(root);
+    const tm = tierMath();
+    statCards(root, tm);
+    subTabs(root);
+    const sub = document.createElement("div");
+    sub.id = "plan-sub";
+    root.appendChild(sub);
+    const which = Store.get("ui_subtab", "tiers");
+    if (which === "signals") renderSignals(sub);
+    else if (which === "calendar") CalView.render(sub);
+    else renderTiers(sub, tm);
   }
-  function refreshDerived() { render(); }
 
-  return { render, dropMath };
+  /* ----- download planning signals (CSV) ----- */
+  function downloadCSV() {
+    const tm = tierMath(), asm = tm.asm;
+    const L = [];
+    const today = new Date().toISOString().slice(0, 10);
+    L.push(["Malia Mills planning signals", today]);
+    L.push([]);
+    L.push(["DROP", "DEMAND", "BUY (anchor)", "IN STORE", "SELL OUT", "FABRIC ORDER", "SEWING LAUNCH",
+            "CW BUY SUM", "CW EXP SALES", "CW LEFTOVER"]);
+    tm.calcs.forEach(({ drop, m }) => {
+      const assigned = Store.get("drop_colors_" + drop.id, []) || [];
+      let bsum = 0, ssum = 0, lsum = 0;
+      assigned.forEach(c => {
+        const nk = cwNameKey(c.name);
+        const st = cwStFrac(nk, drop.id, c.st !== undefined ? c.st : asm.sell_through);
+        const b = cwBuyUnitsEntry(c, drop.id);
+        const e = cwExpected(b, st);
+        bsum += b; ssum += e.sales; lsum += e.leftover;
+      });
+      L.push([drop.name, m.demand, m.buy, m.inStore, m.sellOut, m.fabricOrder, m.sewingLaunch, bsum, ssum, lsum]);
+    });
+    L.push([]);
+    L.push(["ASSIGNED COLORWAY", "DROP", "GRADE", "TIER TARGET", "BUY", "ST%", "MONTHS", "EXPECTED SALES", "LEFTOVER", "SELL OUT"]);
+    tm.calcs.forEach(({ drop, m }) => {
+      (Store.get("drop_colors_" + drop.id, []) || []).forEach(c => {
+        const nk = cwNameKey(c.name);
+        const st = cwStFrac(nk, drop.id, c.st !== undefined ? c.st : asm.sell_through);
+        const moFb = c.months !== undefined ? c.months : asm["grade_" + String(c.grade).toLowerCase() + "_months"] || 4;
+        const mo = cwMonths(nk, drop.id, moFb);
+        const buy = cwBuyUnitsEntry(c, drop.id);
+        const exp = cwExpected(buy, st);
+        L.push([c.name, drop.name, c.grade, c.units, buy, Math.round(st * 100), mo,
+                exp.sales, exp.leftover, cwSellOut(m.inStore, mo)]);
+      });
+    });
+    L.push([]);
+    L.push(["TIER", "UNITS/COLOR", "COLORS"]);
+    L.push(["Grade A (" + tm.cat + ")", tm.aU, tm.aN]);
+    L.push(["Grade B (" + tm.cat + ")", tm.bU, tm.bN]);
+    L.push(["Grade C (" + tm.cat + ", derived)", tm.cU, tm.cN]);
+    L.push(["New-color need", tm.need]);
+    L.push(["Tier capacity", tm.capacity]);
+    L.push([]);
+    L.push(["BLACK REORDER", "STYLE", "SIZE", "OH", "VEL/WK", "COVER WKS", "REORDER"]);
+    Black.computeRows().filter(r => r.status === "reorder")
+      .forEach(r => L.push(["", r.style, r.size, r.total, +r.vel.toFixed(2),
+        isFinite(r.cover) ? +r.cover.toFixed(1) : "", r.rec]));
+    const csv = L.map(r => r.map(c => `"${String(c === null || c === undefined ? "" : c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "planning-signals-" + today + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+  }
+
+  return { render, dropMath, dropCalc, tierMath, downloadCSV, cwNameKey, cwStFrac, cwMonths,
+           cwSellOut, cwExpected, cwBuyUnitsEntry, slotBuyUnits };
 })();

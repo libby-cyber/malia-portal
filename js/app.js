@@ -1,14 +1,17 @@
-/* app.js — boot, tab routing */
+/* app.js — boot + top-level tab routing (plan / black / fix).
+ * Plan tab owns its sub-tabs (signals / tiers / calendar) via Store "ui_subtab". */
 function refreshDerived() {
-  // called after any override/assumption change: re-render active tab
-  const active = document.querySelector("#tabs button.active");
-  if (active) showTab(active.dataset.tab, true);
+  renderCurrent();
 }
 
-function showTab(name, force) {
-  $$("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
-  $$(".tabpane").forEach(p => p.classList.toggle("active", p.id === "tab-" + name));
-  ({ plan: Plan.render, black: Black.render, fix: FixNow.render, calendar: CalView.render })[name]();
+function renderCurrent() {
+  const tab = Store.get("ui_tab", "plan");
+  $$("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  $$(".tabpane").forEach(p => p.classList.toggle("active", p.id === "tab-" + tab));
+  if (tab === "plan") Plan.render();
+  else if (tab === "black") Black.render();
+  else FixNow.render();
+  window.scrollTo({ top: 0 });
 }
 
 async function boot() {
@@ -23,8 +26,13 @@ async function boot() {
   $("#data-note").textContent =
     `Swim demand anchored to ${DATA.demand.annual.toLocaleString()} units sold in 2026 · ` +
     `${DATA.colors.length} colors · ${DATA.meta.stores.length} stores`;
-  $$("#tabs button").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
-  showTab("plan");
+  const snap = $("#snapshot-note");
+  if (snap) snap.textContent = DATA.meta.inventory_snapshot || "";
+  $$("#tabs button").forEach(b => b.addEventListener("click", () => {
+    Store.set("ui_tab", b.dataset.tab);
+    renderCurrent();
+  }));
+  renderCurrent();
 }
 
 document.addEventListener("DOMContentLoaded", boot);
